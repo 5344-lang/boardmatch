@@ -135,6 +135,10 @@ emojiItems.forEach(item => {
   });
 });
 customEmojiInput.addEventListener('input', function() { currentSelectedEmoji = this.value || '👩'; previewEmoji.innerText = currentSelectedEmoji; });
+document.getElementById('intro').addEventListener('input', function() {
+  document.getElementById('intro-counter').innerText = `${this.value.length} / 300`;
+});
+
 document.getElementById('city').addEventListener('change', function() {
   const customCityInput = document.getElementById('custom-city');
   if (this.value === '기타') { customCityInput.style.display = 'block'; customCityInput.required = true; } 
@@ -200,6 +204,9 @@ function openMyPage() {
   document.getElementById('nickname').value = myUserData.nickname || "";
   document.getElementById('birthYear').value = myUserData.birthYear || "";
   document.getElementById('kakao-link').value = myUserData.kakaoLink || "";
+  const introVal = myUserData.intro || "";
+  document.getElementById('intro').value = introVal;
+  document.getElementById('intro-counter').innerText = `${introVal.length} / 300`;
   
   const participatingToggle = document.getElementById('isParticipating');
   const lockMsg = document.getElementById('profile-confirm-lock-msg');
@@ -764,6 +771,75 @@ window.showProfilePopup = function(user) {
 
 window.closeProfilePopup = function() {
   document.getElementById('profile-popup-overlay').style.display = 'none';
+};
+
+window.showAdminMemberDetail = function(uid) {
+  const u = adminUsersData[uid];
+  if (!u) return;
+
+  const specKeys = ['relaxVsCompetitive', 'peacefulVsInteraction', 'luckVsSkill'];
+  const specLabels = ['즐겜↔빡겜', '평화↔경쟁', '운빨↔실력'];
+  const gs = u.gameSpectrums || {};
+  const age = u.birthYear ? `${formatBirthYear(u.birthYear)}년생` : '';
+  const cl = u.checklist || {};
+  const statusInfo = {
+    waiting:   { label: '대기',   color: '#95a5a6' },
+    submitted: { label: '제출',   color: '#3498db' },
+    matched:   { label: '매칭',   color: '#27ae60' },
+    held:      { label: '보류',   color: '#f39c12' }
+  };
+  const si = statusInfo[u.status] || { label: u.status || '-', color: '#999' };
+  const partColor = u.isParticipating !== false ? '#27ae60' : '#e74c3c';
+  const partLabel = u.isParticipating !== false ? '참여O' : '불참';
+  const confColor = u.isProfileConfirmed ? '#27ae60' : '#ccc';
+  const confLabel = u.isProfileConfirmed ? '점검O' : '점검X';
+
+  document.getElementById('admin-popup-nickname').innerHTML =
+    `${u.emoji||'👤'} ${u.nickname} <span style="font-size:0.82rem; color:#888; font-weight:400;">${age}</span>`;
+
+  const specBars = specKeys.map((k, i) =>
+    `<div style="display:flex; align-items:center; gap:6px; margin-bottom:5px;">
+      <span style="font-size:0.7rem; color:#888; width:64px; flex-shrink:0;">${specLabels[i]}</span>
+      <div style="flex:1; height:8px; background:#f0f0f0; border-radius:8px; overflow:hidden;">
+        <div style="width:${gs[k]??50}%; height:100%; background:var(--soft-rose);"></div>
+      </div>
+    </div>`
+  ).join('');
+
+  const tags = (u.genreTags || []).map(t => `<span class="genre-display-chip">${t}</span>`).join(' ')
+    || '<span style="color:#aaa; font-size:0.82rem;">미설정</span>';
+
+  document.getElementById('admin-popup-content').innerHTML = `
+    <div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:12px;">
+      <span style="background:${si.color}22; color:${si.color}; border:1px solid ${si.color}55; padding:2px 10px; border-radius:10px; font-size:0.72rem; font-weight:700;">${si.label}</span>
+      <span style="background:${partColor}22; color:${partColor}; border:1px solid ${partColor}55; padding:2px 10px; border-radius:10px; font-size:0.72rem; font-weight:700;">${partLabel}</span>
+      <span style="background:${confColor}22; color:${confColor}; border:1px solid ${confColor}55; padding:2px 10px; border-radius:10px; font-size:0.72rem; font-weight:700;">${confLabel}</span>
+      ${u.isAdmin ? '<span style="background:#fff3e0; color:#e67e22; border:1px solid #ffe0b2; padding:2px 10px; border-radius:10px; font-size:0.72rem; font-weight:700;">관리자</span>' : ''}
+    </div>
+    ${u.city ? `<p style="font-size:0.85rem; color:#888; margin-bottom:10px;">📍 ${u.city}</p>` : ''}
+    ${u.intro
+      ? `<p style="font-size:0.9rem; line-height:1.6; color:#555; background:#f9f9f9; padding:12px; border-radius:10px; margin-bottom:12px;">${u.intro}</p>`
+      : '<p style="font-size:0.85rem; color:#ccc; margin-bottom:12px; font-style:italic;">자기소개 없음</p>'}
+    <div style="margin-bottom:12px;">${specBars}</div>
+    <div style="margin-bottom:10px;">${tags}</div>
+    <p style="font-size:0.8rem; color:#888; margin-bottom:8px;">룰마: ${cl.canRuleMaster ? '✅' : '❌'} · 숙련도: ${cl.skillLevel||'보통'} · 선호인원: ${cl.preferredSize||4}인</p>
+    ${u.kakaoLink
+      ? `<p style="font-size:0.8rem; color:#2b8ec1; word-break:break-all; margin-bottom:4px;">💬 ${u.kakaoLink}</p>`
+      : '<p style="font-size:0.8rem; color:#ccc; margin-bottom:4px;">카카오 링크 없음</p>'}
+  `;
+
+  const actionsEl = document.getElementById('admin-popup-actions');
+  if (u.kakaoLink) {
+    actionsEl.innerHTML = `<button onclick="window.open('${u.kakaoLink.replace(/'/g, "\\'")}', '_blank')" style="background:#f0e6ff; color:#8e44ad; border:1px solid #d7b8f0; font-size:0.8rem; padding:8px 14px; width:auto; border-radius:10px;">💬 오픈톡 열기</button>`;
+  } else {
+    actionsEl.innerHTML = '';
+  }
+
+  document.getElementById('admin-member-popup-overlay').style.display = 'flex';
+};
+
+window.closeAdminMemberPopup = function() {
+  document.getElementById('admin-member-popup-overlay').style.display = 'none';
 };
 
 document.getElementById('check-result-btn').addEventListener('click', async () => {
@@ -1638,7 +1714,7 @@ function renderAllMembersPanel() {
       <div class="member-main">
         <span class="member-emoji">${u.emoji || '👤'}</span>
         <div class="member-info">
-          <div class="member-name">${u.nickname}${u.isAdmin ? ' <span style="font-size:0.68rem;color:#e67e22;font-weight:700;background:#fff3e0;padding:1px 5px;border-radius:6px;">관리자</span>' : ''}${!u.isAdmin ? ` <button onclick="adminDeleteUser('${u.id}', '${escNick}')" style="background:none; color:#ccc; border:none; font-size:0.85rem; padding:0 2px; width:auto; cursor:pointer; line-height:1; vertical-align:middle;">✕</button>` : ''}</div>
+          <div class="member-name"><span style="cursor:pointer; text-decoration:underline; text-underline-offset:2px;" onclick="showAdminMemberDetail('${u.id}')">${u.nickname}</span>${u.isAdmin ? ' <span style="font-size:0.68rem;color:#e67e22;font-weight:700;background:#fff3e0;padding:1px 5px;border-radius:6px;">관리자</span>' : ''}${!u.isAdmin ? ` <button onclick="adminDeleteUser('${u.id}', '${escNick}')" style="background:none; color:#ccc; border:none; font-size:0.85rem; padding:0 2px; width:auto; cursor:pointer; line-height:1; vertical-align:middle;">✕</button>` : ''}</div>
           <div class="member-sub">${u.birthYear ? formatBirthYear(u.birthYear) + '년생' : '-'} · ${u.city || '-'}</div>
           <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">
             <span style="background:${si.color}22; color:${si.color}; border:1px solid ${si.color}55; padding:1px 7px; border-radius:10px; font-size:0.68rem; font-weight:700;">${si.label}</span>

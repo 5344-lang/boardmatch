@@ -75,7 +75,8 @@
           <input type="url" id="kakao-link" placeholder="본인의 오픈 카카오톡 링크" required style="margin-top: 15px;">
         </div>
 
-        <textarea id="intro" placeholder="(좋아하는 게임이나 플레이 스타일을 자유롭게 적어주세요)"></textarea>
+        <textarea id="intro" placeholder="(좋아하는 게임이나 플레이 스타일을 자유롭게 적어주세요)" maxlength="300"></textarea>
+        <p id="intro-counter" style="text-align:right; font-size:0.75rem; color:#aaa; margin-top:4px; margin-bottom:0;">0 / 300</p>
 
         <div class="spectrum-container" id="game-spectrums-box">
           <h3 style="margin-bottom:14px;">🎮 게임 성향</h3>
@@ -262,6 +263,18 @@
         <div id="result-actions" style="margin-top:8px;"></div>
       </div>
     </section>
+
+    <!-- 관리자 회원 상세 팝업 -->
+    <div id="admin-member-popup-overlay" class="popup-overlay" style="display:none;" onclick="closeAdminMemberPopup()">
+      <div class="popup-box" onclick="event.stopPropagation()">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 id="admin-popup-nickname" style="margin:0; font-size:1.1rem;"></h3>
+          <button class="popup-close-btn" onclick="closeAdminMemberPopup()">✕ 닫기</button>
+        </div>
+        <div id="admin-popup-content"></div>
+        <div id="admin-popup-actions" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div>
+      </div>
+    </div>
 
     <!-- 프로필 팝업 -->
     <div id="profile-popup-overlay" class="popup-overlay" style="display:none;" onclick="closeProfilePopup()">
