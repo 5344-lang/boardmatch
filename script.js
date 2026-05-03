@@ -1379,10 +1379,12 @@ function renderAdminFromSnaps(snap, reqSnap) {
       Object.entries(teamGroups).forEach(([tid, members]) => {
         totalMatched += members.length;
         const leader = members.find(m => m.isTeamLeader);
-        const memberStr = members.map(m =>
-          `${m.emoji||'👤'} <b>${m.nickname}</b>${m.id === leader?.id ? ' 👑' : ''}${!m.kakaoLink ? ' <span style="color:#e74c3c;font-size:0.75rem;">⚠️</span>' : ''}`
-        ).join(' · ');
-        matchedListDiv.innerHTML += `<div style="padding:8px; border-bottom:1px solid #ffd1e5;">${memberStr}</div>`;
+        const memberCards = members.map(m =>
+          `<span onclick="changeTeamLeader('${tid}','${m.id}')" style="cursor:pointer; display:inline-block; padding:3px 9px; margin:2px; border-radius:8px; background:${m.id === leader?.id ? '#fffbea' : '#fff'}; border:1.5px solid ${m.id === leader?.id ? '#f1c40f' : '#e0e0e0'}; font-size:0.85rem;">
+            ${m.emoji||'👤'} ${m.id === leader?.id ? '👑 ' : ''}<b>${m.nickname}</b>${!m.kakaoLink ? ' <span style="color:#e74c3c;font-size:0.75rem;">⚠️</span>' : ''}
+          </span>`
+        ).join('');
+        matchedListDiv.innerHTML += `<div style="padding:8px; border-bottom:1px solid #ffd1e5;">${memberCards}</div>`;
       });
       if (matchedListDiv.innerHTML === '') matchedListDiv.innerHTML = "<p style='color:#777;'>아직 확정된 팀이 없습니다.</p>";
 
@@ -1682,6 +1684,15 @@ window.setProposalLeader = function(uid) {
   renderCurrentProposal();
 };
 
+window.changeTeamLeader = function(teamId, newLeaderUid) {
+  if (!confirm('팀장을 변경하시겠습니까?')) return;
+  const batch = db.batch();
+  Object.values(adminUsersData)
+    .filter(u => u.teamId === teamId)
+    .forEach(u => batch.update(db.collection('users').doc(u.id), { isTeamLeader: u.id === newLeaderUid }));
+  batch.commit().then(() => loadAdminData());
+};
+
 document.getElementById('sim-add-member-btn').addEventListener('click', () => {
   const sel = document.getElementById('sim-add-member-select');
   const uid = sel.value;
@@ -1704,7 +1715,7 @@ function showNextProposal() {
     return alert("제안된 모든 팀 검토가 끝났습니다.");
   }
   currentProposal = team;
-  selectedLeaderId = null;
+  selectedLeaderId = team[Math.floor(Math.random() * team.length)].id;
   renderCurrentProposal();
 }
 
