@@ -613,14 +613,15 @@ function renderCard() {
   document.getElementById('c-intro').innerText = u.intro;
 
   const specKeys = ['relaxVsCompetitive', 'peacefulVsInteraction', 'luckVsSkill'];
-  const specLabels = ['즐겜↔빡겜', '평화↔경쟁', '운빨↔실력'];
+  const specPairs = [['즐겜','빡겜'], ['평화','경쟁'], ['운빨','실력']];
   const uGs = u.gameSpectrums || {};
   document.getElementById('c-game-spectrums').innerHTML = specKeys.map((k, i) =>
-    `<div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-      <span style="font-size:0.68rem; color:#888; width:68px; flex-shrink:0;">${specLabels[i]}</span>
+    `<div style="display:flex; align-items:center; gap:5px; margin-bottom:4px;">
+      <span style="background:#34495e; color:#fff; border-radius:20px; padding:2px 7px; font-size:0.66rem; font-weight:700; flex-shrink:0;">${specPairs[i][0]}</span>
       <div class="custom-progress-bar" style="flex:1; height:7px;">
         <div class="custom-progress-fill" style="width:${uGs[k]??50}%;"></div>
       </div>
+      <span style="background:var(--soft-rose); color:#fff; border-radius:20px; padding:2px 7px; font-size:0.66rem; font-weight:700; flex-shrink:0;">${specPairs[i][1]}</span>
     </div>`
   ).join('');
 
@@ -741,15 +742,16 @@ function renderResultTeamCard(u, idx, highlighted, isSelf, prefix) {
   const cl = u.checklist || {};
   const gs = u.gameSpectrums || {};
   const specKeys = ['relaxVsCompetitive', 'peacefulVsInteraction', 'luckVsSkill'];
-  const specLabels = ['즐겜↔빡겜', '평화↔경쟁', '운빨↔실력'];
+  const specPairs = [['즐겜','빡겜'], ['평화','경쟁'], ['운빨','실력']];
   const age = u.birthYear ? `${formatBirthYear(u.birthYear)}년생` : '';
   const tags = (u.genreTags || []).map(t => `<span class="genre-display-chip">${t}</span>`).join(' ');
   const specBars = specKeys.map((k, i) =>
-    `<div style="display:flex; align-items:center; gap:5px; margin-bottom:3px;">
-      <span style="font-size:0.65rem; color:#999; width:60px; flex-shrink:0;">${specLabels[i]}</span>
+    `<div style="display:flex; align-items:center; gap:5px; margin-bottom:4px;">
+      <span style="background:#34495e; color:#fff; border-radius:20px; padding:2px 7px; font-size:0.66rem; font-weight:700; flex-shrink:0;">${specPairs[i][0]}</span>
       <div class="custom-progress-bar" style="flex:1; height:6px;">
         <div class="custom-progress-fill" style="width:${gs[k]??50}%;"></div>
       </div>
+      <span style="background:var(--soft-rose); color:#fff; border-radius:20px; padding:2px 7px; font-size:0.66rem; font-weight:700; flex-shrink:0;">${specPairs[i][1]}</span>
     </div>`
   ).join('');
 
@@ -793,7 +795,7 @@ function renderResultTeamCard(u, idx, highlighted, isSelf, prefix) {
 window.showProfilePopup = function(user) {
   const overlay = document.getElementById('profile-popup-overlay');
   const specKeys = ['relaxVsCompetitive', 'peacefulVsInteraction', 'luckVsSkill'];
-  const specLabels = ['즐겜↔빡겜', '평화↔경쟁', '운빨↔실력'];
+  const specPairs = [['즐겜','빡겜'], ['평화','경쟁'], ['운빨','실력']];
   const gs = user.gameSpectrums || {};
   const age = user.birthYear ? `${formatBirthYear(user.birthYear)}년생` : '';
 
@@ -801,11 +803,12 @@ window.showProfilePopup = function(user) {
     `${user.emoji||'👤'} ${user.nickname} <span style="font-size:0.82rem; color:#888; font-weight:400;">${age}</span>`;
 
   const specBars = specKeys.map((k, i) =>
-    `<div style="display:flex; align-items:center; gap:6px; margin-bottom:5px;">
-      <span style="font-size:0.7rem; color:#888; width:64px; flex-shrink:0;">${specLabels[i]}</span>
+    `<div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+      <span style="background:#34495e; color:#fff; border-radius:20px; padding:2px 7px; font-size:0.67rem; font-weight:700; flex-shrink:0;">${specPairs[i][0]}</span>
       <div style="flex:1; height:8px; background:#f0f0f0; border-radius:8px; overflow:hidden;">
         <div style="width:${gs[k]??50}%; height:100%; background:var(--soft-rose);"></div>
       </div>
+      <span style="background:var(--soft-rose); color:#fff; border-radius:20px; padding:2px 7px; font-size:0.67rem; font-weight:700; flex-shrink:0;">${specPairs[i][1]}</span>
     </div>`
   ).join('');
 
@@ -840,7 +843,7 @@ window.showAdminMemberDetail = function(uid) {
   if (!u) return;
 
   const specKeys = ['relaxVsCompetitive', 'peacefulVsInteraction', 'luckVsSkill'];
-  const specLabels = ['즐겜↔빡겜', '평화↔경쟁', '운빨↔실력'];
+  const specPairs = [['즐겜','빡겜'], ['평화','경쟁'], ['운빨','실력']];
   const gs = u.gameSpectrums || {};
   const age = u.birthYear ? `${formatBirthYear(u.birthYear)}년생` : '';
   const cl = u.checklist || {};
@@ -860,11 +863,12 @@ window.showAdminMemberDetail = function(uid) {
     `${u.emoji||'👤'} ${u.nickname} <span style="font-size:0.82rem; color:#888; font-weight:400;">${age}</span>`;
 
   const specBars = specKeys.map((k, i) =>
-    `<div style="display:flex; align-items:center; gap:6px; margin-bottom:5px;">
-      <span style="font-size:0.7rem; color:#888; width:64px; flex-shrink:0;">${specLabels[i]}</span>
+    `<div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+      <span style="background:#34495e; color:#fff; border-radius:20px; padding:2px 7px; font-size:0.67rem; font-weight:700; flex-shrink:0;">${specPairs[i][0]}</span>
       <div style="flex:1; height:8px; background:#f0f0f0; border-radius:8px; overflow:hidden;">
         <div style="width:${gs[k]??50}%; height:100%; background:var(--soft-rose);"></div>
       </div>
+      <span style="background:var(--soft-rose); color:#fff; border-radius:20px; padding:2px 7px; font-size:0.67rem; font-weight:700; flex-shrink:0;">${specPairs[i][1]}</span>
     </div>`
   ).join('');
 
