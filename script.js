@@ -475,8 +475,8 @@ function listenToGlobalSettings() {
     const stats = data.participantStats;
     const statsStr = stats
       ? (data.isMatchingActive
-          ? ` · 참여 ${stats.participating}명 / 제출 완료 ${stats.submitted}명`
-          : ` · 참여 예정 ${stats.participating}명`)
+          ? ` · ${stats.submitted}/${stats.participating}`
+          : ` · ${stats.participating}명 참여 예정`)
       : '';
     let autoMsg = null;
     if (data.resultsPublished) autoMsg = `🎲 ${title} 팀 구성 결과가 발표되었습니다! 결과 확인 버튼을 눌러보세요 🎉`;
