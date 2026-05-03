@@ -1168,7 +1168,7 @@ function loadAdminData() {
 }
 
 function renderAdminFromSnaps(snap, reqSnap) {
-  let heldCount = 0; let waitingCount = 0;
+  let heldCount = 0, waitingCount = 0, submittedCount = 0, matchedCount = 0, notParticipatingCount = 0;
   userMap = {}; adminUsersData = {}; requestsData = {};
 
   const allParticipantsDiv = document.getElementById('admin-participants-all');
@@ -1202,13 +1202,15 @@ function renderAdminFromSnaps(snap, reqSnap) {
     // Step 0: 참여예정자 목록 (check status)
     if (u.isParticipating !== false) {
       participatingCount++;
+      if (u.status === 'submitted') submittedCount++;
+      else if (u.status === 'matched') matchedCount++;
       const checkColor = u.isProfileConfirmed ? '#27ae60' : '#e74c3c';
       const checkLabel = u.isProfileConfirmed ? '✅ 점검완료' : '❌ 미점검';
       if (allParticipantsDiv) allParticipantsDiv.innerHTML += `<div style="padding:7px 0; border-bottom:1px dashed #eee; display:flex; justify-content:space-between; align-items:center;"><span>${u.emoji||'👤'} ${u.nickname}</span><span style="color:${checkColor}; font-weight:700; font-size:0.85rem;">${checkLabel}</span></div>`;
       if (u.isProfileConfirmed) confirmedCount++;
       else if (unconfirmedManageDiv) unconfirmedManageDiv.innerHTML += `<div style="padding:7px 0; border-bottom:1px dashed #eee; display:flex; justify-content:space-between; align-items:center;"><span>${u.emoji||'👤'} ${u.nickname}</span><button onclick="setUserNotParticipating('${doc.id}','${u.nickname}')" style="background:#e74c3c; color:white; font-size:0.78rem; padding:5px 10px; border-radius:8px; width:auto; cursor:pointer; border:none;">참여 X</button></div>`;
     } else {
-      // 불참 회원 → 긴급 추가 셀렉트에 추가
+      notParticipatingCount++;
       const opt = `<option value="${doc.id}">${u.emoji||'👤'} ${u.nickname}</option>`;
       if (emergencySel1) emergencySel1.innerHTML += opt;
       if (emergencySel2) emergencySel2.innerHTML += opt;
@@ -1230,6 +1232,21 @@ function renderAdminFromSnaps(snap, reqSnap) {
       logsArray.push({ id: doc.id, req: requestsData[doc.id] });
     }
   });
+
+  const statsBar = document.getElementById('admin-stats-bar');
+  if (statsBar) {
+    const chip = (label, val, color) =>
+      `<span style="background:${color}22; color:${color}; border:1px solid ${color}55; border-radius:20px; padding:4px 12px; font-size:0.8rem; font-weight:700; white-space:nowrap;">${label} <b>${val}</b></span>`;
+    const totalRegistered = participatingCount + notParticipatingCount;
+    statsBar.innerHTML =
+      chip('전체', totalRegistered, '#555') +
+      chip('참여', participatingCount, '#27ae60') +
+      chip('불참', notParticipatingCount, '#e74c3c') +
+      chip('대기', waitingCount, '#95a5a6') +
+      chip('제출', submittedCount, '#3498db') +
+      (matchedCount > 0 ? chip('매칭', matchedCount, '#8e44ad') : '') +
+      (heldCount > 0 ? chip('보류', heldCount, '#f39c12') : '');
+  }
 
   const heldCountEl = document.getElementById('held-count');
   if (heldCountEl) heldCountEl.innerText = heldCount;
