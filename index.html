@@ -202,9 +202,9 @@
         </div>
         <div class="card-actions" id="card-action-btns">
           <div class="action-grid top-actions">
-            <button class="act-btn pref1" onclick="pickCard('pref1')">1지망</button>
-            <button class="act-btn pref2" id="btn-pref2" onclick="pickCard('pref2')">2지망</button>
-            <button class="act-btn pref3" id="btn-pref3" onclick="pickCard('pref3')">3지망</button>
+            <button class="act-btn pref1" onclick="pickCard('pref1')">선택①</button>
+            <button class="act-btn pref2" id="btn-pref2" onclick="pickCard('pref2')">선택②</button>
+            <button class="act-btn pref3" id="btn-pref3" onclick="pickCard('pref3')">선택③</button>
           </div>
           <div class="action-grid bottom-actions">
             <button class="act-btn dispref" id="btn-dispref" onclick="pickCard('dispref1')">비선호</button>
@@ -213,12 +213,12 @@
         <div class="my-picks-box">
           <h4>📌 나의 선택 현황</h4>
           <ul id="my-picks-list">
-            <li>1지망: <div class="pick-right-side"><span id="pick-1-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref1" onclick="resetPick('pref1')">🔄</button></div></li>
-            <li id="li-pref2">2지망: <div class="pick-right-side"><span id="pick-2-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref2" onclick="resetPick('pref2')">🔄</button></div></li>
-            <li id="li-pref3">3지망: <div class="pick-right-side"><span id="pick-3-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref3" onclick="resetPick('pref3')">🔄</button></div></li>
+            <li>선택①: <div class="pick-right-side"><span id="pick-1-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref1" onclick="resetPick('pref1')">🔄</button></div></li>
+            <li id="li-pref2">선택②: <div class="pick-right-side"><span id="pick-2-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref2" onclick="resetPick('pref2')">🔄</button></div></li>
+            <li id="li-pref3">선택③: <div class="pick-right-side"><span id="pick-3-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref3" onclick="resetPick('pref3')">🔄</button></div></li>
             <li id="li-dispref">비선호: <div class="pick-right-side"><span id="pick-dis-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-dispref1" onclick="resetPick('dispref1')">🔄</button></div></li>
           </ul>
-          <button id="submit-selection-btn" class="disabled-submit" disabled style="margin-top: 15px;">이대로 최종 제출하기</button>
+          <button id="submit-selection-btn" style="margin-top: 15px;">이대로 최종 제출하기</button>
         </div>
       </div>
 
@@ -226,7 +226,7 @@
         <h2 style="font-size: 3rem;">🔒</h2>
         <h3>제출 완료</h3>
         <p id="submitted-lock-desc" style="color: #777; margin-top: 10px;">진행자가 매칭을 종료하기 전까지<br>수정할 수 있습니다.</p>
-        <button id="edit-picks-btn" class="secondary-btn" style="margin-top: 20px; font-size: 0.9rem;">✏️ 지망 수정하기</button>
+        <button id="edit-picks-btn" class="secondary-btn" style="margin-top: 20px; font-size: 0.9rem;">✏️ 선택 수정하기</button>
       </div>
 
       <div id="profile-check-area" style="display: none; text-align: center; padding: 40px 20px;">
@@ -261,6 +261,7 @@
           </div>
         </div>
         <div id="result-actions" style="margin-top:8px;"></div>
+        <div id="featured-games-result" style="display:none; margin-top:24px;"></div>
       </div>
     </section>
 
@@ -292,10 +293,12 @@
       <h2>🛠 관리자 대시보드</h2>
 
       <div class="admin-nav-tabs">
-        <button class="admin-nav-tab active" id="admin-tab-match" onclick="switchAdminView('match')">📊 매칭 관리</button>
-        <button class="admin-nav-tab" id="admin-tab-members" onclick="switchAdminView('members')">👥 전체회원 관리</button>
-        <button class="admin-nav-tab" id="admin-tab-banned" onclick="switchAdminView('banned')">🚫 차단 관리</button>
-        <button class="admin-nav-tab" id="admin-tab-test" onclick="switchAdminView('test')">🧪 매칭 테스트</button>
+        <button class="admin-nav-tab active" id="admin-tab-match" onclick="switchAdminView('match')">📊 매칭</button>
+        <button class="admin-nav-tab" id="admin-tab-members" onclick="switchAdminView('members')">👥 회원</button>
+        <button class="admin-nav-tab" id="admin-tab-banned" onclick="switchAdminView('banned')">🚫 차단</button>
+        <button class="admin-nav-tab" id="admin-tab-games" onclick="switchAdminView('games')">🎲 추천게임</button>
+        <button class="admin-nav-tab" id="admin-tab-preview" onclick="switchAdminView('preview')">👁 미리보기</button>
+        <button class="admin-nav-tab" id="admin-tab-test" onclick="switchAdminView('test')" style="display:none;">🧪 테스트</button>
       </div>
 
       <div id="admin-match-view">
@@ -372,8 +375,8 @@
           <button id="admin-start-btn" class="action-btn start">매칭 시작하기</button>
           <button id="admin-stop-btn" class="action-btn stop">매칭 종료 →</button>
           <div class="toggle-list" style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-            <label class="toggle-container list-item"><span class="toggle-label">2지망 활성화</span><input type="checkbox" id="toggle-pref2" checked><span class="switch"></span></label>
-            <label class="toggle-container list-item"><span class="toggle-label">3지망 활성화</span><input type="checkbox" id="toggle-pref3" checked><span class="switch"></span></label>
+            <label class="toggle-container list-item"><span class="toggle-label">선택② 활성화</span><input type="checkbox" id="toggle-pref2" checked><span class="switch"></span></label>
+            <label class="toggle-container list-item"><span class="toggle-label">선택③ 활성화</span><input type="checkbox" id="toggle-pref3" checked><span class="switch"></span></label>
             <label class="toggle-container list-item"><span class="toggle-label">비선호 활성화</span><input type="checkbox" id="toggle-dispref" checked><span class="switch"></span></label>
             <button id="apply-toggles-btn" style="background:#34495e; padding:10px; margin-top:10px;">옵션 적용하기</button>
           </div>
@@ -551,6 +554,41 @@
           <h3>🚫 차단된 회원 관리</h3>
           <p style="font-size:0.85rem; color:#777; margin-bottom:12px;">접속이 차단된 회원 목록입니다. 차단 해제 시 다시 로그인할 수 있습니다.</p>
           <div id="banned-members-list" class="requests-list" style="max-height:500px;"></div>
+        </div>
+      </div>
+
+      <!-- 이달의 추천 게임 -->
+      <div id="admin-games-panel" style="display:none;">
+        <div class="admin-panel">
+          <h3>🎲 이달의 추천 게임</h3>
+          <p style="font-size:0.85rem; color:#777; margin-bottom:14px;">팀 구성 결과 화면 하단에 표시됩니다. 팀원들이 함께 즐길 게임을 추천해주세요.</p>
+          <div id="featured-games-admin-list" style="margin-bottom:16px;"></div>
+          <div style="background:#f9f9f9; border-radius:14px; padding:16px; border:1px solid #eee;">
+            <p style="font-size:0.85rem; font-weight:700; color:var(--deep-navy); margin-bottom:10px;">+ 게임 추가</p>
+            <input type="text" id="fg-name" placeholder="게임 이름 (필수)" style="margin-bottom:8px;">
+            <textarea id="fg-reason" placeholder="추천 이유 (간단히 적어주세요)" rows="3" style="width:100%; border:1px solid #ddd; border-radius:10px; padding:10px; font-size:0.9rem; resize:none; margin-bottom:8px; box-sizing:border-box;"></textarea>
+            <input type="url" id="fg-intro-url" placeholder="소개 URL (선택)" style="margin-bottom:8px;">
+            <input type="url" id="fg-youtube-url" placeholder="유튜브 규칙설명 링크 (선택)" style="margin-bottom:12px;">
+            <button id="fg-add-btn" style="background:#8e44ad;">게임 추가하기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사용자 화면 미리보기 -->
+      <div id="admin-preview-panel" style="display:none;">
+        <div class="admin-panel">
+          <h3>👁 사용자 화면 미리보기</h3>
+          <p style="font-size:0.85rem; color:#777; margin-bottom:14px;">실제 사용자에게 보이는 화면을 단계별로 확인합니다. 실제 데이터에는 영향이 없습니다.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+            <button onclick="showPreview('waiting')" style="background:#95a5a6; padding:10px 14px; width:auto; font-size:0.82rem;">⏳ 대기 화면</button>
+            <button onclick="showPreview('selection')" style="background:var(--soft-rose); padding:10px 14px; width:auto; font-size:0.82rem;">🎴 카드 선택</button>
+            <button onclick="showPreview('submitted')" style="background:#3498db; padding:10px 14px; width:auto; font-size:0.82rem;">🔒 제출 완료</button>
+            <button onclick="showPreview('result-leader')" style="background:#f39c12; padding:10px 14px; width:auto; font-size:0.82rem;">👑 결과(팀장)</button>
+            <button onclick="showPreview('result-member')" style="background:#27ae60; padding:10px 14px; width:auto; font-size:0.82rem;">🎉 결과(팀원)</button>
+          </div>
+          <div id="preview-content-area" style="background:#f4f7f6; border-radius:14px; padding:20px; min-height:120px; font-size:0.9rem; color:#555; text-align:center; display:flex; align-items:center; justify-content:center;">
+            <p style="color:#bbb;">위 버튼을 눌러 화면을 미리봐주세요</p>
+          </div>
         </div>
       </div>
 

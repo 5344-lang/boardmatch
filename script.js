@@ -414,9 +414,9 @@ function loadHomePicksSummary() {
   if (!picksGrid || !auth.currentUser) return;
   const gs = globalSettings || {};
   const prefItems = [
-    { label: '1지망', key: 'pref1', color: 'var(--soft-rose)' },
-    { label: '2지망', key: 'pref2', color: '#f39c12', show: gs.showPref2 !== false },
-    { label: '3지망', key: 'pref3', color: '#f1c40f', show: gs.showPref3 !== false },
+    { label: '선택①', key: 'pref1', color: 'var(--soft-rose)' },
+    { label: '선택②', key: 'pref2', color: '#f39c12', show: gs.showPref2 !== false },
+    { label: '선택③', key: 'pref3', color: '#f1c40f', show: gs.showPref3 !== false },
     { label: '비선호', key: 'dispref1', color: '#95a5a6', show: gs.showDispref !== false },
   ].filter(i => i.show !== false);
 
@@ -510,12 +510,12 @@ function listenToGlobalSettings() {
         }
       } else if (data.isMatchingActive && myUserData.isParticipating !== false) {
         showWaitroomArea('selection-area');
-        document.getElementById('btn-pref2').style.display = data.showPref2 ? 'inline-block' : 'none';
-        document.getElementById('btn-pref3').style.display = data.showPref3 ? 'inline-block' : 'none';
-        document.getElementById('btn-dispref').style.display = data.showDispref ? 'inline-block' : 'none';
-        document.getElementById('li-pref2').style.display = data.showPref2 ? 'flex' : 'none';
-        document.getElementById('li-pref3').style.display = data.showPref3 ? 'flex' : 'none';
-        document.getElementById('li-dispref').style.display = data.showDispref ? 'flex' : 'none';
+        document.getElementById('btn-pref2').style.display = data.showPref2 !== false ? 'inline-block' : 'none';
+        document.getElementById('btn-pref3').style.display = data.showPref3 !== false ? 'inline-block' : 'none';
+        document.getElementById('btn-dispref').style.display = data.showDispref !== false ? 'inline-block' : 'none';
+        document.getElementById('li-pref2').style.display = data.showPref2 !== false ? 'flex' : 'none';
+        document.getElementById('li-pref3').style.display = data.showPref3 !== false ? 'flex' : 'none';
+        document.getElementById('li-dispref').style.display = data.showDispref !== false ? 'flex' : 'none';
         loadCards();
       } else if (data.isProfileCheckActive && !data.isMatchingActive && myUserData.isParticipating !== false) {
         showWaitroomArea('profile-check-area');
@@ -527,6 +527,7 @@ function listenToGlobalSettings() {
     }
     if (myUserData) updateUserProgressBar();
     if (myUserData.isAdmin) { startAdminRealtimeListeners(); loadAdminData(); }
+    if (sections.result?.style.display === 'block') renderFeaturedGamesResult();
   });
 }
 
@@ -570,7 +571,7 @@ function loadCards() {
         document.getElementById(resetBtnIds[key]).style.display = 'none';
       });
       const submitBtn = document.getElementById('submit-selection-btn');
-      submitBtn.disabled = true; submitBtn.classList.add('disabled-submit'); submitBtn.classList.remove('active-submit');
+      submitBtn.disabled = false; submitBtn.classList.remove('disabled-submit'); submitBtn.classList.add('active-submit');
 
       // DB에서 기존 선택 복원
       db.collection('requests').doc(auth.currentUser.uid).get().then(reqDoc => {
@@ -587,9 +588,7 @@ function loadCards() {
               }
             }
           });
-          if (mySelections.pref1) {
-            submitBtn.disabled = false; submitBtn.classList.remove('disabled-submit'); submitBtn.classList.add('active-submit');
-          }
+          submitBtn.disabled = false; submitBtn.classList.remove('disabled-submit'); submitBtn.classList.add('active-submit');
         }
         currentIndex = 0; renderCard();
       });
@@ -645,7 +644,7 @@ window.prevCard = function() { if (currentIndex > 0) { currentIndex--; renderCar
 // 🌟 실시간 프리뷰를 위한 데이터베이스 저장 (isDraft: true)
 window.pickCard = function(prefType) {
   const u = allUsers[currentIndex];
-  for (let key in mySelections) { if (key !== prefType && mySelections[key] === u.id) return alert("⚠️ 이미 다른 지망으로 선택된 분입니다."); }
+  for (let key in mySelections) { if (key !== prefType && mySelections[key] === u.id) return alert("⚠️ 이미 선택한 분입니다."); }
 
   if (prefType !== 'dispref1') {
     const myGs = myUserData.gameSpectrums || {};
@@ -668,8 +667,7 @@ window.pickCard = function(prefType) {
   if (mySelections[prefType] && mySelections[prefType] !== u.id) {
     const existing = allUsers.find(u2 => u2.id === mySelections[prefType]);
     const existingName = existing?.nickname || '선택된 분';
-    const prefLabel = { pref1: '1지망', pref2: '2지망', pref3: '3지망', dispref1: '비선호' }[prefType];
-    if (!confirm(`${prefLabel}을 '${existingName}'님에서 '${u.nickname}'님으로 바꾸시겠어요?`)) return;
+    if (!confirm(`'${existingName}'님 대신 '${u.nickname}'님으로 바꾸시겠어요?`)) return;
     const oldNameEl = document.getElementById(mapIds[prefType]);
     oldNameEl.innerText = '미선택'; oldNameEl.style.color = '#777'; oldNameEl.style.fontWeight = 'normal';
     document.getElementById(resetBtnIds[prefType]).style.display = 'none';
@@ -681,10 +679,6 @@ window.pickCard = function(prefType) {
   nameEl.innerText = u.nickname; nameEl.style.color = "#FD79A8"; nameEl.style.fontWeight = "bold";
   document.getElementById(resetBtnIds[prefType]).style.display = "inline-block";
   
-  if(mySelections.pref1) {
-    const btn = document.getElementById('submit-selection-btn');
-    btn.disabled = false; btn.classList.remove('disabled-submit'); btn.classList.add('active-submit');
-  }
   
   // 실시간으로 임시 저장!
   db.collection('requests').doc(auth.currentUser.uid).set({ ...mySelections, isDraft: true }, { merge: true });
@@ -698,17 +692,17 @@ window.resetPick = function(prefType) {
     nameEl.innerText = "미선택"; nameEl.style.color = "#777"; nameEl.style.fontWeight = "normal";
     document.getElementById(resetBtnIds[prefType]).style.display = "none";
     
-    if(!mySelections.pref1) {
-      const btn = document.getElementById('submit-selection-btn');
-      btn.disabled = true; btn.classList.remove('active-submit'); btn.classList.add('disabled-submit');
-    }
     // 실시간 임시 저장 업데이트
     db.collection('requests').doc(auth.currentUser.uid).set({ ...mySelections, isDraft: true }, { merge: true });
   }
 };
 
 document.getElementById('submit-selection-btn').addEventListener('click', () => {
-  if(confirm("제출하시겠습니까? (종료 전까지 수정 가능)")) {
+  const hasAny = mySelections.pref1 || mySelections.pref2 || mySelections.pref3;
+  const msg = hasAny
+    ? "제출하시겠습니까? (종료 전까지 수정 가능)"
+    : "선택하지 않으셨습니다. 완료하시겠습니까?\n(알고리즘이 자동으로 팀을 배정합니다)";
+  if (confirm(msg)) {
     db.collection('requests').doc(auth.currentUser.uid).set({
       ...mySelections, isDraft: false, timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true }).then(() => {
@@ -723,10 +717,78 @@ document.getElementById('edit-picks-btn').addEventListener('click', () => {
 
 let resultTeammatesData = [];
 let resultLeaderData = null;
+let resultAllTeamData = [];
 
 window.showTeammatePopup = function(idx) {
   if (resultTeammatesData[idx]) showProfilePopup(resultTeammatesData[idx]);
 };
+
+window.showResultMemberPopup = function(idx) {
+  if (resultAllTeamData[idx]) showProfilePopup(resultAllTeamData[idx]);
+};
+
+window.toggleResultCard = function(bodyId, arrowId) {
+  const body = document.getElementById(bodyId);
+  const arrow = document.getElementById(arrowId);
+  if (!body) return;
+  const opening = body.style.display === 'none';
+  body.style.display = opening ? 'block' : 'none';
+  if (arrow) arrow.textContent = opening ? '▲' : '▼';
+};
+
+function renderResultTeamCard(u, idx, highlighted, isSelf, prefix) {
+  prefix = prefix || 'rc';
+  const cl = u.checklist || {};
+  const gs = u.gameSpectrums || {};
+  const specKeys = ['relaxVsCompetitive', 'peacefulVsInteraction', 'luckVsSkill'];
+  const specLabels = ['즐겜↔빡겜', '평화↔경쟁', '운빨↔실력'];
+  const age = u.birthYear ? `${formatBirthYear(u.birthYear)}년생` : '';
+  const tags = (u.genreTags || []).map(t => `<span class="genre-display-chip">${t}</span>`).join(' ');
+  const specBars = specKeys.map((k, i) =>
+    `<div style="display:flex; align-items:center; gap:5px; margin-bottom:3px;">
+      <span style="font-size:0.65rem; color:#999; width:60px; flex-shrink:0;">${specLabels[i]}</span>
+      <div class="custom-progress-bar" style="flex:1; height:6px;">
+        <div class="custom-progress-fill" style="width:${gs[k]??50}%;"></div>
+      </div>
+    </div>`
+  ).join('');
+
+  const border = isSelf ? '2px solid #27ae60' : (highlighted ? '2px solid #f39c12' : '2px solid #eee');
+  const bg = isSelf ? 'linear-gradient(135deg,#f0fff4,#e8f8f0)' : (highlighted ? 'linear-gradient(135deg,#fffbf0,#fff8e1)' : '#fff');
+
+  let badges = '';
+  if (isSelf) badges += `<span style="background:#27ae60; color:#fff; border-radius:20px; padding:1px 9px; font-size:0.68rem; font-weight:800;">나</span> `;
+  if (u.isTeamLeader) badges += `<span style="background:#f39c12; color:#fff; border-radius:20px; padding:1px 9px; font-size:0.68rem; font-weight:800;">👑 팀장</span>`;
+
+  const kakaoBtn = !isSelf && u.kakaoLink
+    ? `<a href="${u.kakaoLink.replace(/"/g, '&quot;')}" target="_blank" onclick="event.stopPropagation()" style="display:block; background:#FEE500; color:#371D1E; border-radius:10px; padding:8px; text-align:center; font-weight:800; font-size:0.8rem; margin-top:10px; text-decoration:none;">💬 오픈톡 열기</a>`
+    : (!isSelf ? `<p style="font-size:0.75rem; color:#ccc; text-align:center; margin-top:10px; margin-bottom:0;">카카오 링크 없음</p>` : '');
+
+  const bodyId = `${prefix}-body-${idx}`;
+  const arrowId = `${prefix}-arrow-${idx}`;
+
+  return `
+    <div onclick="toggleResultCard('${bodyId}','${arrowId}')" style="background:${bg}; border:${border}; border-radius:18px; padding:14px 16px; margin-bottom:12px; cursor:pointer;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="font-size:2rem; flex-shrink:0; line-height:1;">${u.emoji||'👤'}</div>
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:2px;">
+            <span style="font-weight:800; font-size:0.97rem;">${u.nickname}</span>
+            ${badges}
+          </div>
+          <div style="font-size:0.73rem; color:#999;">${age}${u.city ? ` · ${u.city}` : ''}</div>
+          <div style="font-size:0.73rem; color:#aaa; margin-top:1px;">룰마: ${cl.canRuleMaster ? '✅' : '❌'} · ${cl.skillLevel||'보통'} · 선호인원 ${cl.preferredSize||4}인</div>
+        </div>
+        <span id="${arrowId}" style="color:#bbb; font-size:0.8rem; flex-shrink:0;">▼</span>
+      </div>
+      <div id="${bodyId}" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #f0f0f0;">
+        ${u.intro ? `<p style="font-size:0.85rem; color:#555; line-height:1.6; background:#f7f7f7; padding:9px 11px; border-radius:10px; margin-bottom:10px;">${u.intro}</p>` : '<p style="font-size:0.8rem; color:#ccc; margin-bottom:10px;">자기소개 없음</p>'}
+        <div style="margin-bottom:9px;">${specBars}</div>
+        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:4px;">${tags || '<span style="color:#ccc; font-size:0.75rem;">태그없음</span>'}</div>
+        ${kakaoBtn}
+      </div>
+    </div>`;
+}
 
 window.showProfilePopup = function(user) {
   const overlay = document.getElementById('profile-popup-overlay');
@@ -791,8 +853,8 @@ window.showAdminMemberDetail = function(uid) {
   const si = statusInfo[u.status] || { label: u.status || '-', color: '#999' };
   const partColor = u.isParticipating !== false ? '#27ae60' : '#e74c3c';
   const partLabel = u.isParticipating !== false ? '참여O' : '불참';
-  const confColor = u.isProfileConfirmed ? '#27ae60' : '#ccc';
-  const confLabel = u.isProfileConfirmed ? '점검O' : '점검X';
+  const confColor = u.isProfileConfirmed ? '#3498db' : '#95a5a6';
+  const confLabel = u.isProfileConfirmed ? '점검완료' : '미점검';
 
   document.getElementById('admin-popup-nickname').innerHTML =
     `${u.emoji||'👤'} ${u.nickname} <span style="font-size:0.82rem; color:#888; font-weight:400;">${age}</span>`;
@@ -830,7 +892,7 @@ window.showAdminMemberDetail = function(uid) {
 
   const actionsEl = document.getElementById('admin-popup-actions');
   if (u.kakaoLink) {
-    actionsEl.innerHTML = `<button onclick="window.open('${u.kakaoLink.replace(/'/g, "\\'")}', '_blank')" style="background:#f0e6ff; color:#8e44ad; border:1px solid #d7b8f0; font-size:0.8rem; padding:8px 14px; width:auto; border-radius:10px;">💬 오픈톡 열기</button>`;
+    actionsEl.innerHTML = `<button onclick="window.open('${u.kakaoLink.replace(/'/g, "\\'")}', '_blank')" style="background:#FEE500; color:#371D1E; border:none; font-size:0.8rem; padding:8px 14px; width:auto; border-radius:10px; font-weight:800;">💬 오픈톡 열기</button>`;
   } else {
     actionsEl.innerHTML = '';
   }
@@ -855,37 +917,31 @@ document.getElementById('check-result-btn').addEventListener('click', async () =
   const partnerCard = document.getElementById('anim-partner-card');
   const resultActions = document.getElementById('result-actions');
 
+  const selfEntry = { ...myUserData, id: auth.currentUser.uid };
+
   if (isLeader) {
     resultTeammatesData = teammates;
     resultLeaderData = null;
     partnerCard.style.cursor = '';
     partnerCard.onclick = null;
     partnerCard.innerHTML =
-      `<div style="font-weight:800; font-size:0.9rem; margin-bottom:8px;">👑 팀장입니다!</div>` +
-      teammates.map((t, i) =>
-        `<div style="margin-bottom:6px; font-size:0.85rem; cursor:pointer; padding:3px 0;" onclick="showTeammatePopup(${i})">
-          ${t.emoji||'👤'} <b>${t.nickname}</b>
-          ${t.kakaoLink ? `<a href="${t.kakaoLink}" target="_blank" style="color:var(--soft-rose); font-weight:700; font-size:0.78rem; text-decoration:none;"> 📱카톡</a>` : ' <span style="color:#aaa; font-size:0.78rem;">링크없음</span>'}
-        </div>`
-      ).join('');
+      `<div style="font-weight:800; font-size:0.95rem; margin-bottom:4px;">👑 팀장입니다!</div>
+       <div style="font-size:0.78rem; color:#bbb;">${teammates.length}명의 팀원</div>`;
 
-    const totalSize = teammates.length + 1;
-    const teammateList = teammates.map(t =>
-      `<span style="display:inline-flex; align-items:center; gap:4px; background:white; border-radius:20px; padding:4px 10px; font-size:0.8rem; font-weight:700; box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        ${t.emoji||'👤'} ${t.nickname}
-      </span>`
-    ).join(' ');
+    resultAllTeamData = [selfEntry, ...teammates];
     resultActions.innerHTML = `
-      <div style="background:linear-gradient(135deg,#fff8e1,#fff3cd); border:2px solid #f39c12; border-radius:18px; padding:20px 18px; margin-top:16px; text-align:center;">
-        <div style="font-size:2.2rem; margin-bottom:6px;">👑</div>
-        <div style="font-weight:900; font-size:1.05rem; color:#d35400; margin-bottom:8px;">이번 팀장으로 선발되셨습니다!</div>
-        <p style="font-size:0.88rem; color:#7d5200; line-height:1.7; margin-bottom:14px;">오픈 카톡방을 개설하고 아래 팀원들에게 초대 링크를 보내주세요!</p>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:16px;">${teammateList}</div>
-        <p style="font-size:0.76rem; color:#aaa; margin:0;">팀원 이름을 누르면 프로필과 카카오 링크를 확인할 수 있어요</p>
+      <div style="background:linear-gradient(135deg,#fff8e1,#fff3cd); border:2px solid #f39c12; border-radius:18px; padding:16px 18px; margin-top:16px; text-align:center;">
+        <div style="font-size:2rem; margin-bottom:4px;">👑</div>
+        <div style="font-weight:900; font-size:1.0rem; color:#d35400; margin-bottom:6px;">이번 팀장으로 선발되셨습니다!</div>
+        <p style="font-size:0.85rem; color:#7d5200; line-height:1.6; margin:0;">오픈 카톡방을 개설하고 아래 팀원들에게 초대 링크를 보내주세요!</p>
+      </div>
+      <div style="margin-top:18px;">
+        <p style="font-size:0.85rem; font-weight:700; color:#555; margin-bottom:10px;">👥 팀 전체 프로필</p>
+        ${resultAllTeamData.map((t, i) => renderResultTeamCard(t, i, !!t.isTeamLeader, t.id === auth.currentUser.uid)).join('')}
       </div>
     `;
   } else {
-    const leader = [...teammates, { ...myUserData, id: auth.currentUser.uid }].find(u => u.isTeamLeader) || teammates[0];
+    const leader = [...teammates, selfEntry].find(u => u.isTeamLeader) || teammates[0];
     resultLeaderData = leader;
     resultTeammatesData = [];
     document.getElementById('r-partner-emoji').innerText = leader?.emoji || '👑';
@@ -895,20 +951,23 @@ document.getElementById('check-result-btn').addEventListener('click', async () =
     partnerCard.style.cursor = 'pointer';
     partnerCard.onclick = () => showProfilePopup(leader);
     const leaderNick = leader?.nickname || '팀장';
-    const contactBtn = leader?.kakaoLink
-      ? `<button class="result-contact-btn" onclick="window.open('${leader.kakaoLink.replace(/'/g, "\\'")}', '_blank')">💬 오픈톡으로 연락하기</button>`
-      : '<p style="font-size:0.85rem; color:#aaa; margin-top:8px; text-align:center;">카카오 링크를 등록하지 않았어요</p>';
+
+    resultAllTeamData = [...teammates, selfEntry];
     resultActions.innerHTML = `
       <div style="background:linear-gradient(135deg,#e8f4fd,#d6eaf8); border:2px solid #3498db; border-radius:18px; padding:16px 18px; margin-top:16px; text-align:center;">
-        <div style="font-size:2rem; margin-bottom:6px;">🎉</div>
+        <div style="font-size:2rem; margin-bottom:4px;">🎉</div>
         <div style="font-weight:900; font-size:1.0rem; color:#1a5276; margin-bottom:6px;">${leaderNick}님의 팀원이 되셨습니다!</div>
         <p style="font-size:0.85rem; color:#2471a3; margin:0;">팀장이 오픈톡 링크를 보내주실거예요. 조금만 기다려주세요 😊</p>
       </div>
-      <div style="margin-top:12px;">${contactBtn}</div>
+      <div style="margin-top:18px;">
+        <p style="font-size:0.85rem; font-weight:700; color:#555; margin-bottom:10px;">👥 팀 전체 프로필</p>
+        ${resultAllTeamData.map((t, i) => renderResultTeamCard(t, i, !!t.isTeamLeader, t.id === auth.currentUser.uid)).join('')}
+      </div>
     `;
   }
 
   setTimeout(() => document.querySelector('.cards-animation-container').classList.add('animate-start'), 500);
+  renderFeaturedGamesResult();
 });
 
 // ==========================================
@@ -931,16 +990,19 @@ window.setUserNotParticipating = function(uid, nickname) {
     if (submitterId === uid) return;
     const submitter = adminUsersData[submitterId];
     if (!submitter || submitter.isAdmin) return;
-    if ([req.pref1, req.pref2, req.pref3].includes(uid) && submitter.status === 'submitted') {
-      affected.push({ id: submitterId, name: submitter.nickname });
-    }
+    const fields = {};
+    if (req.pref1 === uid) fields.pref1 = null;
+    if (req.pref2 === uid) fields.pref2 = null;
+    if (req.pref3 === uid) fields.pref3 = null;
+    if (req.dispref1 === uid) fields.dispref1 = null;
+    if (Object.keys(fields).length > 0) affected.push({ id: submitterId, name: submitter.nickname, fields });
   });
   let msg = `${nickname}님을 참여 X로 변경하시겠습니까?`;
-  if (affected.length > 0) msg += `\n\n⚠️ ${nickname}님을 지망으로 선택한 제출자:\n${affected.map(a => a.name).join(', ')}\n\n이 분들의 제출이 취소됩니다.`;
+  if (affected.length > 0) msg += `\n\n${nickname}님을 선택했던 ${affected.length}명의 해당 선택만 삭제됩니다.\n(나머지 제출 내역은 유지됩니다)`;
   if (!confirm(msg)) return;
   const batch = db.batch();
   batch.update(db.collection('users').doc(uid), { isParticipating: false });
-  affected.forEach(a => batch.update(db.collection('users').doc(a.id), { status: 'waiting' }));
+  affected.forEach(a => batch.update(db.collection('requests').doc(a.id), a.fields));
   batch.commit().then(() => alert('변경 완료!'));
 };
 
@@ -962,8 +1024,13 @@ document.getElementById('admin-profile-check-end-btn').addEventListener('click',
 });
 document.getElementById('admin-start-btn').addEventListener('click', () => {
   if (!confirm("매칭을 시작하시겠습니까?\n참여자들에게 카드 선택 화면이 열립니다.")) return;
-  db.collection('settings').doc('global').set({ isMatchingActive: true, resultsPublished: false }, { merge: true })
-    .then(() => alert("✅ 매칭이 시작되었습니다!"));
+  db.collection('users').where('status', '==', 'held').get().then(heldSnap => {
+    const batch = db.batch();
+    heldSnap.forEach(doc => batch.update(doc.ref, { status: 'submitted' }));
+    return batch.commit();
+  }).then(() => {
+    return db.collection('settings').doc('global').set({ isMatchingActive: true, resultsPublished: false }, { merge: true });
+  }).then(() => alert("✅ 매칭이 시작되었습니다!"));
 });
 document.getElementById('admin-stop-btn').addEventListener('click', () => {
   if (!confirm("매칭을 종료하고 매칭 검토 단계로 넘어가시겠습니까?")) return;
@@ -1147,16 +1214,15 @@ function renderAdminFromSnaps(snap, reqSnap) {
     if (u.isParticipating && u.status === 'waiting' && !u.emergencyAdded) {
       waitingCount++;
       const req = requestsData[doc.id] || {};
-      const p1 = userMap[req.pref1] || '-'; const p2 = userMap[req.pref2] || '-'; const dp = userMap[req.dispref1] || '-';
+      const selCount = [req.pref1, req.pref2, req.pref3].filter(Boolean).length;
+      const selStr = selCount > 0 ? `선택 ${selCount}명` : '미선택';
       if (waitingListDiv) waitingListDiv.innerHTML += `<div style="padding:8px 0; border-bottom:1px solid #eee;">
-        ⏳ ${u.emoji||'👤'} <b>${u.nickname}</b> <span style="font-size:0.8rem; color:#888; float:right;">(${p1} / ${p2} // ${dp})</span></div>`;
+        ⏳ ${u.emoji||'👤'} <b>${u.nickname}</b> <span style="font-size:0.8rem; color:#aaa; float:right;">${selStr}</span></div>`;
     }
 
     if (u.isParticipating && u.status === 'submitted' && requestsData[doc.id] && !requestsData[doc.id].isDraft) {
-      const req = requestsData[doc.id] || {};
-      const p1 = userMap[req.pref1] || '-';
       const emerTag = u.emergencyAdded ? ' <span style="font-size:0.7rem;color:#e67e22;background:#fff3e0;border-radius:5px;padding:1px 5px;">긴급</span>' : '';
-      if (submittedListDiv) submittedListDiv.innerHTML += `<div style="padding:8px 0; border-bottom:1px solid #eee;">✅ ${u.emoji||'👤'} <b>${u.nickname}</b>${emerTag} <span style="font-size:0.8rem;color:#888;float:right;">1지망: ${p1}</span></div>`;
+      if (submittedListDiv) submittedListDiv.innerHTML += `<div style="padding:8px 0; border-bottom:1px solid #eee;">✅ ${u.emoji||'👤'} <b>${u.nickname}</b>${emerTag}</div>`;
       logsArray.push({ id: doc.id, req: requestsData[doc.id] });
     }
   });
@@ -1624,16 +1690,17 @@ document.getElementById('manual-team-users').addEventListener('change', function
 // ==========================================
 
 window.switchAdminView = function(view) {
-  document.getElementById('admin-match-view').style.display = view === 'match' ? 'block' : 'none';
-  document.getElementById('admin-members-panel').style.display = view === 'members' ? 'block' : 'none';
-  document.getElementById('admin-banned-panel').style.display = view === 'banned' ? 'block' : 'none';
-  document.getElementById('admin-test-panel').style.display = view === 'test' ? 'block' : 'none';
-  document.getElementById('admin-tab-match').classList.toggle('active', view === 'match');
-  document.getElementById('admin-tab-members').classList.toggle('active', view === 'members');
-  document.getElementById('admin-tab-banned').classList.toggle('active', view === 'banned');
-  document.getElementById('admin-tab-test').classList.toggle('active', view === 'test');
+  const views = ['match', 'members', 'banned', 'games', 'preview', 'test'];
+  views.forEach(v => {
+    const panelId = v === 'match' ? 'admin-match-view' : `admin-${v}-panel`;
+    const el = document.getElementById(panelId);
+    if (el) el.style.display = v === view ? 'block' : 'none';
+    const tab = document.getElementById(`admin-tab-${v}`);
+    if (tab) tab.classList.toggle('active', v === view);
+  });
   if (view === 'members') renderAllMembersPanel();
   if (view === 'banned') renderBannedPanel();
+  if (view === 'games') renderFeaturedGamesAdmin();
 };
 
 function renderBannedPanel() {
@@ -1706,8 +1773,8 @@ function renderAllMembersPanel() {
     const si = statusInfo[u.status] || { label: u.status || '-', color: '#999' };
     const partColor = u.isParticipating !== false ? '#27ae60' : '#e74c3c';
     const partLabel = u.isParticipating !== false ? '참여O' : '불참';
-    const confColor = u.isProfileConfirmed ? '#27ae60' : '#ccc';
-    const confLabel = u.isProfileConfirmed ? '점검O' : '점검X';
+    const confColor = u.isProfileConfirmed ? '#3498db' : '#95a5a6';
+    const confLabel = u.isProfileConfirmed ? '점검완료' : '미점검';
     const escNick = u.nickname.replace(/'/g, "\\'");
 
     return `<div class="member-row">
@@ -2023,3 +2090,157 @@ function renderTestResult(teams, usersData, reqData) {
   panel.style.display = 'block';
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// ==========================================
+// 🎲 이달의 추천 게임
+// ==========================================
+
+function renderFeaturedGamesAdmin() {
+  const listEl = document.getElementById('featured-games-admin-list');
+  if (!listEl) return;
+  const games = globalSettings.featuredGames || [];
+  if (games.length === 0) {
+    listEl.innerHTML = '<p style="color:#bbb; font-size:0.85rem; text-align:center; padding:12px 0;">등록된 게임이 없습니다.</p>';
+    return;
+  }
+  listEl.innerHTML = games.map((g, i) =>
+    `<div style="background:white; border-radius:12px; padding:14px; margin-bottom:10px; border:1px solid #eee;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+        <div style="font-weight:800; font-size:0.95rem; color:var(--deep-navy);">🎲 ${g.name}</div>
+        <button onclick="removeFeaturedGame(${i})" style="background:none; color:#ccc; border:none; font-size:0.85rem; padding:0 2px; width:auto; cursor:pointer;">✕</button>
+      </div>
+      ${g.reason ? `<p style="font-size:0.82rem; color:#666; line-height:1.5; margin-bottom:8px;">${g.reason}</p>` : ''}
+      ${g.introUrl ? `<a href="${g.introUrl}" target="_blank" style="font-size:0.78rem; color:#3498db; display:block; margin-bottom:3px; word-break:break-all;">🔗 소개 링크</a>` : ''}
+      ${g.youtubeUrl ? `<a href="${g.youtubeUrl}" target="_blank" style="font-size:0.78rem; color:#e74c3c; display:block; word-break:break-all;">▶ 유튜브 규칙설명</a>` : ''}
+    </div>`
+  ).join('');
+}
+
+window.removeFeaturedGame = function(idx) {
+  const games = [...(globalSettings.featuredGames || [])];
+  games.splice(idx, 1);
+  db.collection('settings').doc('global').set({ featuredGames: games }, { merge: true })
+    .then(() => { globalSettings.featuredGames = games; renderFeaturedGamesAdmin(); });
+};
+
+document.getElementById('fg-add-btn').addEventListener('click', () => {
+  const name = document.getElementById('fg-name').value.trim();
+  if (!name) return alert("게임 이름을 입력해주세요.");
+  const reason = document.getElementById('fg-reason').value.trim();
+  const introUrl = document.getElementById('fg-intro-url').value.trim();
+  const youtubeUrl = document.getElementById('fg-youtube-url').value.trim();
+  const newGame = { name, reason, introUrl, youtubeUrl };
+  const games = [...(globalSettings.featuredGames || []), newGame];
+  db.collection('settings').doc('global').set({ featuredGames: games }, { merge: true }).then(() => {
+    globalSettings.featuredGames = games;
+    document.getElementById('fg-name').value = '';
+    document.getElementById('fg-reason').value = '';
+    document.getElementById('fg-intro-url').value = '';
+    document.getElementById('fg-youtube-url').value = '';
+    renderFeaturedGamesAdmin();
+    alert("게임이 추가되었습니다!");
+  });
+});
+
+function renderFeaturedGamesResult() {
+  const container = document.getElementById('featured-games-result');
+  if (!container) return;
+  const games = globalSettings.featuredGames || [];
+  if (games.length === 0) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div style="background:linear-gradient(135deg,#f8f4ff,#ede7f6); border:2px solid #ce93d8; border-radius:18px; padding:20px 18px;">
+      <div style="font-weight:900; font-size:1.05rem; color:#6a1b9a; margin-bottom:14px; text-align:center;">🎲 이달의 추천 게임</div>
+      ${games.map(g =>
+        `<div style="background:white; border-radius:12px; padding:14px; margin-bottom:10px; box-shadow:0 2px 8px rgba(142,68,173,0.08);">
+          <div style="font-weight:800; font-size:0.95rem; color:var(--deep-navy); margin-bottom:6px;">${g.name}</div>
+          ${g.reason ? `<p style="font-size:0.85rem; color:#555; line-height:1.6; margin-bottom:10px;">${g.reason}</p>` : ''}
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            ${g.introUrl ? `<a href="${g.introUrl}" target="_blank" style="font-size:0.82rem; color:#3498db; font-weight:700; text-decoration:none;">🔗 게임 소개</a>` : ''}
+            ${g.youtubeUrl ? `<a href="${g.youtubeUrl}" target="_blank" style="font-size:0.82rem; color:#e74c3c; font-weight:700; text-decoration:none;">▶ 규칙 설명</a>` : ''}
+          </div>
+        </div>`
+      ).join('')}
+    </div>`;
+}
+
+// ==========================================
+// 👁 관리자 사용자 화면 미리보기
+// ==========================================
+
+const PREVIEW_DUMMY_TEAM = [
+  { id: 'dummy-leader', nickname: '진수', emoji: '😀', birthYear: 1995, city: '대구', checklist: { skillLevel: '고수', canRuleMaster: true, preferredSize: 4 }, kakaoLink: 'https://open.kakao.com/o/example', isTeamLeader: true, gameSpectrums: { relaxVsCompetitive: 70, peacefulVsInteraction: 60, luckVsSkill: 50 }, genreTags: ['전략/유로형', '파티형'], intro: '전략 게임을 좋아하고 룰 설명도 잘 해요!' },
+  { id: 'dummy-1', nickname: '미래', emoji: '😎', birthYear: 1998, city: '부산', checklist: { skillLevel: '보통', canRuleMaster: false, preferredSize: 4 }, kakaoLink: '', isTeamLeader: false, gameSpectrums: { relaxVsCompetitive: 40, peacefulVsInteraction: 50, luckVsSkill: 60 }, genreTags: ['파티형'], intro: '보드게임 초보지만 열심히 할게요!' },
+  { id: 'dummy-2', nickname: '현우', emoji: '🤔', birthYear: 1996, city: '포항', checklist: { skillLevel: '입문', canRuleMaster: false, preferredSize: 3 }, kakaoLink: 'https://open.kakao.com/o/example2', isTeamLeader: false, gameSpectrums: { relaxVsCompetitive: 50, peacefulVsInteraction: 40, luckVsSkill: 70 }, genreTags: ['블러핑/추리형'], intro: '블러핑 게임 최애입니다.' },
+];
+const PREVIEW_DUMMY_SELF = { id: 'dummy-self', nickname: '나 (예시)', emoji: '🙋', birthYear: 1997, city: '서울', checklist: { skillLevel: '보통', canRuleMaster: false, preferredSize: 4 }, kakaoLink: '', isTeamLeader: false, gameSpectrums: { relaxVsCompetitive: 50, peacefulVsInteraction: 50, luckVsSkill: 50 }, genreTags: ['전략/유로형'], intro: '이 자리에 본인의 소개가 표시됩니다.' };
+
+window.showPreview = function(mode) {
+  const area = document.getElementById('preview-content-area');
+  if (!area) return;
+
+  if (mode === 'waiting') {
+    area.innerHTML = `
+      <div style="text-align:center; padding:20px 0; width:100%;">
+        <div style="font-size:3rem; margin-bottom:12px;">⏳</div>
+        <h3 style="font-size:1.2rem; font-weight:900; color:var(--deep-navy); margin-bottom:8px;">이번 매칭에 참여하시나요?</h3>
+        <p style="font-size:0.85rem; color:#999;">토글을 켜서 참여 신청을 해주세요!</p>
+        <div style="margin-top:20px; background:white; border:2px solid #eee; border-radius:16px; padding:14px 28px; display:inline-block;">
+          <span style="font-size:0.95rem; font-weight:800; color:#ccc;">이번 회차 참여 ○</span>
+        </div>
+      </div>`;
+  } else if (mode === 'selection') {
+    area.innerHTML = `
+      <div style="width:100%;">
+        <div style="background:white; border:1px solid #eee; border-radius:16px; padding:20px; text-align:center; margin-bottom:10px;">
+          <div style="font-size:3rem; margin-bottom:6px;">😀</div>
+          <div style="font-weight:800; font-size:1.1rem;">진수 <span style="font-size:0.8rem; color:#aaa; font-weight:400;">95년생</span></div>
+          <div style="font-size:0.82rem; color:#555; margin-top:4px;">대구 · 고수 · 룰마OK</div>
+          <div style="font-size:0.82rem; color:#777; margin-top:8px; line-height:1.5;">전략 게임을 좋아하고 룰 설명도 잘 해요!</div>
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <button style="flex:1; background:var(--soft-rose); color:white; padding:12px; border-radius:12px; border:none; font-weight:700; font-size:0.9rem;">선택①</button>
+          <button style="flex:1; background:#f39c12; color:white; padding:12px; border-radius:12px; border:none; font-weight:700; font-size:0.9rem;">선택②</button>
+          <button style="flex:1; background:#f1c40f; color:#333; padding:12px; border-radius:12px; border:none; font-weight:700; font-size:0.9rem;">선택③</button>
+        </div>
+        <div style="display:flex; justify-content:center;">
+          <button style="background:#34495e; color:white; padding:12px 32px; border-radius:12px; border:none; font-weight:700; font-size:0.9rem;">비선호</button>
+        </div>
+      </div>`;
+  } else if (mode === 'submitted') {
+    area.innerHTML = `
+      <div style="text-align:center; padding:30px 0; width:100%;">
+        <div style="font-size:3rem; margin-bottom:8px;">🔒</div>
+        <h3 style="font-size:1.2rem; font-weight:900; margin-bottom:8px;">제출 완료</h3>
+        <p style="font-size:0.85rem; color:#777; line-height:1.6;">매칭이 마감되었습니다.<br>결과를 기다려주세요.</p>
+      </div>`;
+  } else if (mode === 'result-leader') {
+    const dummySelfLeader = { ...PREVIEW_DUMMY_SELF, isTeamLeader: true, nickname: '나 (예시)' };
+    const members = PREVIEW_DUMMY_TEAM.slice(1);
+    resultAllTeamData = [dummySelfLeader, ...members];
+    area.innerHTML = `
+      <div style="width:100%;">
+        <div style="background:linear-gradient(135deg,#fff8e1,#fff3cd); border:2px solid #f39c12; border-radius:18px; padding:16px 18px; text-align:center; margin-bottom:18px;">
+          <div style="font-size:2rem; margin-bottom:4px;">👑</div>
+          <div style="font-weight:900; font-size:1.0rem; color:#d35400; margin-bottom:6px;">이번 팀장으로 선발되셨습니다!</div>
+          <p style="font-size:0.85rem; color:#7d5200; line-height:1.6; margin:0;">오픈 카톡방을 개설하고 아래 팀원들에게 초대 링크를 보내주세요!</p>
+        </div>
+        <p style="font-size:0.85rem; font-weight:700; color:#555; margin-bottom:10px;">👥 팀 전체 프로필</p>
+        ${resultAllTeamData.map((m, i) => renderResultTeamCard(m, i, !!m.isTeamLeader, m.id === 'dummy-self', 'prc')).join('')}
+      </div>`;
+  } else if (mode === 'result-member') {
+    const leader = PREVIEW_DUMMY_TEAM[0];
+    const others = PREVIEW_DUMMY_TEAM.slice(1);
+    resultAllTeamData = [leader, ...others, PREVIEW_DUMMY_SELF];
+    area.innerHTML = `
+      <div style="width:100%;">
+        <div style="background:linear-gradient(135deg,#e8f4fd,#d6eaf8); border:2px solid #3498db; border-radius:18px; padding:16px 18px; text-align:center; margin-bottom:18px;">
+          <div style="font-size:2rem; margin-bottom:4px;">🎉</div>
+          <div style="font-weight:900; font-size:1.0rem; color:#1a5276; margin-bottom:6px;">${leader.nickname}님의 팀원이 되셨습니다!</div>
+          <p style="font-size:0.85rem; color:#2471a3; margin:0;">팀장이 오픈톡 링크를 보내주실거예요. 조금만 기다려주세요 😊</p>
+        </div>
+        <p style="font-size:0.85rem; font-weight:700; color:#555; margin-bottom:10px;">👥 팀 전체 프로필</p>
+        ${resultAllTeamData.map((m, i) => renderResultTeamCard(m, i, !!m.isTeamLeader, m.id === 'dummy-self', 'prc')).join('')}
+      </div>`;
+  }
+};
