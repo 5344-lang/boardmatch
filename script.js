@@ -1726,13 +1726,24 @@ document.getElementById('hold-match-btn').addEventListener('click', () => {
 document.getElementById('reset-held-btn').addEventListener('click', () => {
   db.collection('users').where('status', '==', 'held').get().then(snap => {
     if (snap.empty) return alert("보류 중인 유저가 없습니다.");
+    const heldIds = [];
     const names = [];
+    const batch = db.batch();
     snap.forEach(doc => {
-      db.collection('users').doc(doc.id).update({ status: 'submitted' });
+      batch.update(doc.ref, { status: 'submitted' });
+      heldIds.push(doc.id);
       names.push(doc.data().nickname);
     });
-    alert(`${names.join(', ')}님이 자동 제안 대상으로 복구되었습니다.\n"매칭 제안 받기 시작"을 다시 눌러주세요.`);
-    loadAdminData();
+    batch.commit().then(() => {
+      const heldUsers = heldIds.map(id => adminUsersData[id]).filter(u => u);
+      if (heldUsers.length < 2) return alert(`${names.join(', ')}님이 복구되었습니다.\n인원 부족으로 자동 제안 없음. "매칭 제안 받기 시작"을 눌러주세요.`);
+      const targetSize = globalSettings.targetTeamSize || 4;
+      const bestTeams = runMatchAlgorithm(heldUsers, adminUsersData, requestsData, targetSize);
+      if (!bestTeams || bestTeams.length === 0) return alert(`${names.join(', ')}님이 복구되었습니다.\n인원 부족으로 자동 제안 없음. "매칭 제안 받기 시작"을 눌러주세요.`);
+      proposedQueue = bestTeams;
+      alert(`${names.join(', ')}님이 복구되었습니다.\n보류자 내 재매칭을 시작합니다.`);
+      showNextProposal();
+    });
   });
 });
 document.getElementById('reset-all-btn').addEventListener('click', () => {
