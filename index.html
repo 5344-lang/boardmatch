@@ -563,15 +563,23 @@
       <div id="admin-games-panel" style="display:none;">
         <div class="admin-panel">
           <h3>🎲 이달의 추천 게임</h3>
-          <p style="font-size:0.85rem; color:#777; margin-bottom:14px;">팀 구성 결과 화면 하단에 표시됩니다. 팀원들이 함께 즐길 게임을 추천해주세요.</p>
+          <p style="font-size:0.85rem; color:#777; margin-bottom:6px;">매달 자동 초기화됩니다. 팀 구성 결과 화면 하단에 표시됩니다.</p>
+          <p id="fg-current-month-label" style="font-size:0.78rem; color:#aaa; margin-bottom:14px;"></p>
           <div id="featured-games-admin-list" style="margin-bottom:16px;"></div>
-          <div style="background:#f9f9f9; border-radius:14px; padding:16px; border:1px solid #eee;">
+          <div style="background:#f9f9f9; border-radius:14px; padding:16px; border:1px solid #eee; margin-bottom:20px;">
             <p style="font-size:0.85rem; font-weight:700; color:var(--deep-navy); margin-bottom:10px;">+ 게임 추가</p>
             <input type="text" id="fg-name" placeholder="게임 이름 (필수)" style="margin-bottom:8px;">
             <textarea id="fg-reason" placeholder="추천 이유 (간단히 적어주세요)" rows="3" style="width:100%; border:1px solid #ddd; border-radius:10px; padding:10px; font-size:0.9rem; resize:none; margin-bottom:8px; box-sizing:border-box;"></textarea>
             <input type="url" id="fg-intro-url" placeholder="소개 URL (선택)" style="margin-bottom:8px;">
             <input type="url" id="fg-youtube-url" placeholder="유튜브 규칙설명 링크 (선택)" style="margin-bottom:12px;">
             <button id="fg-add-btn" style="background:#8e44ad;">게임 추가하기</button>
+          </div>
+          <!-- 사용자 화면 미리보기 -->
+          <div id="fg-user-preview" style="margin-bottom:20px;"></div>
+          <!-- 보관함 -->
+          <div id="fg-archive-section" style="display:none;">
+            <p style="font-size:0.88rem; font-weight:800; color:#555; margin-bottom:10px;">🗄 보관함 (지난 달 게임)</p>
+            <div id="featured-games-archive-list"></div>
           </div>
         </div>
       </div>

@@ -2141,60 +2141,14 @@ function renderTestResult(teams, usersData, reqData) {
 // 🎲 이달의 추천 게임
 // ==========================================
 
-function renderFeaturedGamesAdmin() {
-  const listEl = document.getElementById('featured-games-admin-list');
-  if (!listEl) return;
-  const games = globalSettings.featuredGames || [];
-  if (games.length === 0) {
-    listEl.innerHTML = '<p style="color:#bbb; font-size:0.85rem; text-align:center; padding:12px 0;">등록된 게임이 없습니다.</p>';
-    return;
-  }
-  listEl.innerHTML = games.map((g, i) =>
-    `<div style="background:white; border-radius:12px; padding:14px; margin-bottom:10px; border:1px solid #eee;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-        <div style="font-weight:800; font-size:0.95rem; color:var(--deep-navy);">🎲 ${g.name}</div>
-        <button onclick="removeFeaturedGame(${i})" style="background:none; color:#ccc; border:none; font-size:0.85rem; padding:0 2px; width:auto; cursor:pointer;">✕</button>
-      </div>
-      ${g.reason ? `<p style="font-size:0.82rem; color:#666; line-height:1.5; margin-bottom:8px;">${g.reason}</p>` : ''}
-      ${g.introUrl ? `<a href="${g.introUrl}" target="_blank" style="font-size:0.78rem; color:#3498db; display:block; margin-bottom:3px; word-break:break-all;">🔗 소개 링크</a>` : ''}
-      ${g.youtubeUrl ? `<a href="${g.youtubeUrl}" target="_blank" style="font-size:0.78rem; color:#e74c3c; display:block; word-break:break-all;">▶ 유튜브 규칙설명</a>` : ''}
-    </div>`
-  ).join('');
+function currentYearMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-window.removeFeaturedGame = function(idx) {
-  const games = [...(globalSettings.featuredGames || [])];
-  games.splice(idx, 1);
-  db.collection('settings').doc('global').set({ featuredGames: games }, { merge: true })
-    .then(() => { globalSettings.featuredGames = games; renderFeaturedGamesAdmin(); });
-};
-
-document.getElementById('fg-add-btn').addEventListener('click', () => {
-  const name = document.getElementById('fg-name').value.trim();
-  if (!name) return alert("게임 이름을 입력해주세요.");
-  const reason = document.getElementById('fg-reason').value.trim();
-  const introUrl = document.getElementById('fg-intro-url').value.trim();
-  const youtubeUrl = document.getElementById('fg-youtube-url').value.trim();
-  const newGame = { name, reason, introUrl, youtubeUrl };
-  const games = [...(globalSettings.featuredGames || []), newGame];
-  db.collection('settings').doc('global').set({ featuredGames: games }, { merge: true }).then(() => {
-    globalSettings.featuredGames = games;
-    document.getElementById('fg-name').value = '';
-    document.getElementById('fg-reason').value = '';
-    document.getElementById('fg-intro-url').value = '';
-    document.getElementById('fg-youtube-url').value = '';
-    renderFeaturedGamesAdmin();
-    alert("게임이 추가되었습니다!");
-  });
-});
-
-function renderFeaturedGamesResult() {
-  const container = document.getElementById('featured-games-result');
-  if (!container) return;
-  const games = globalSettings.featuredGames || [];
-  if (games.length === 0) { container.style.display = 'none'; return; }
-  container.style.display = 'block';
-  container.innerHTML = `
+function buildFeaturedGamesHTML(games) {
+  if (!games.length) return '';
+  return `
     <div style="background:linear-gradient(135deg,#f8f4ff,#ede7f6); border:2px solid #ce93d8; border-radius:18px; padding:20px 18px;">
       <div style="font-weight:900; font-size:1.05rem; color:#6a1b9a; margin-bottom:14px; text-align:center;">🎲 이달의 추천 게임</div>
       ${games.map(g =>
@@ -2208,6 +2162,150 @@ function renderFeaturedGamesResult() {
         </div>`
       ).join('')}
     </div>`;
+}
+
+function renderFeaturedGamesAdmin() {
+  const listEl = document.getElementById('featured-games-admin-list');
+  if (!listEl) return;
+
+  // 월 변경 시 자동 보관
+  const ym = currentYearMonth();
+  const storedMonth = globalSettings.featuredGamesMonth;
+  const currentGames = globalSettings.featuredGames || [];
+  if (storedMonth && storedMonth !== ym && currentGames.length > 0) {
+    const archive = [...(globalSettings.featuredGamesArchive || [])];
+    currentGames.forEach(g => archive.unshift({ ...g, month: storedMonth }));
+    db.collection('settings').doc('global').set({
+      featuredGames: [], featuredGamesMonth: ym, featuredGamesArchive: archive
+    }, { merge: true }).then(() => {
+      globalSettings.featuredGames = [];
+      globalSettings.featuredGamesMonth = ym;
+      globalSettings.featuredGamesArchive = archive;
+      renderFeaturedGamesAdmin();
+    });
+    return;
+  }
+  if (!storedMonth) {
+    db.collection('settings').doc('global').set({ featuredGamesMonth: ym }, { merge: true });
+    globalSettings.featuredGamesMonth = ym;
+  }
+
+  // 현재 월 라벨
+  const monthLabel = document.getElementById('fg-current-month-label');
+  if (monthLabel) monthLabel.textContent = `현재: ${ym}`;
+
+  // 현재 게임 목록
+  const games = globalSettings.featuredGames || [];
+  listEl.innerHTML = games.length === 0
+    ? '<p style="color:#bbb; font-size:0.85rem; text-align:center; padding:12px 0;">이번 달 등록된 게임이 없습니다.</p>'
+    : games.map((g, i) =>
+        `<div style="background:white; border-radius:12px; padding:14px; margin-bottom:10px; border:1px solid #eee;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <div style="font-weight:800; font-size:0.95rem; color:var(--deep-navy);">🎲 ${g.name}</div>
+            <button onclick="removeFeaturedGame(${i})" style="background:none; color:#ccc; border:none; font-size:0.85rem; padding:0 2px; width:auto; cursor:pointer;" title="보관함으로 이동">✕</button>
+          </div>
+          ${g.reason ? `<p style="font-size:0.82rem; color:#666; line-height:1.5; margin-bottom:8px;">${g.reason}</p>` : ''}
+          ${g.introUrl ? `<a href="${g.introUrl}" target="_blank" style="font-size:0.78rem; color:#3498db; display:block; margin-bottom:3px; word-break:break-all;">🔗 소개 링크</a>` : ''}
+          ${g.youtubeUrl ? `<a href="${g.youtubeUrl}" target="_blank" style="font-size:0.78rem; color:#e74c3c; display:block; word-break:break-all;">▶ 유튜브 규칙설명</a>` : ''}
+        </div>`
+      ).join('');
+
+  // 사용자 화면 미리보기
+  const preview = document.getElementById('fg-user-preview');
+  if (preview) {
+    if (games.length === 0) {
+      preview.innerHTML = '';
+    } else {
+      preview.innerHTML = `<p style="font-size:0.82rem; font-weight:700; color:#888; margin-bottom:8px;">👁 사용자 결과 화면 미리보기</p>${buildFeaturedGamesHTML(games)}`;
+    }
+  }
+
+  // 보관함
+  const archiveSection = document.getElementById('fg-archive-section');
+  const archiveList = document.getElementById('featured-games-archive-list');
+  const archive = globalSettings.featuredGamesArchive || [];
+  if (archiveSection && archiveList) {
+    if (archive.length === 0) {
+      archiveSection.style.display = 'none';
+    } else {
+      archiveSection.style.display = 'block';
+      archiveList.innerHTML = archive.map((g, i) =>
+        `<div style="background:#fafafa; border-radius:12px; padding:12px 14px; margin-bottom:8px; border:1px solid #eee;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div>
+              <span style="font-weight:800; font-size:0.9rem; color:#555;">🎲 ${g.name}</span>
+              <span style="font-size:0.72rem; color:#bbb; margin-left:8px;">${g.month || ''}</span>
+            </div>
+            <button onclick="removeFromArchive(${i})" style="background:none; color:#ddd; border:none; font-size:0.8rem; padding:0 2px; width:auto; cursor:pointer;">🗑</button>
+          </div>
+          ${g.reason ? `<p style="font-size:0.78rem; color:#999; margin-bottom:8px; line-height:1.4;">${g.reason}</p>` : ''}
+          <button onclick="readdFeaturedGame(${i})" style="background:#8e44ad; color:white; font-size:0.78rem; padding:6px 12px; border-radius:8px; border:none; width:auto; cursor:pointer;">↩ 다시 추천하기</button>
+        </div>`
+      ).join('');
+    }
+  }
+}
+
+window.removeFeaturedGame = function(idx) {
+  const ym = currentYearMonth();
+  const games = [...(globalSettings.featuredGames || [])];
+  const [removed] = games.splice(idx, 1);
+  const archive = [...(globalSettings.featuredGamesArchive || [])];
+  archive.unshift({ ...removed, month: globalSettings.featuredGamesMonth || ym });
+  db.collection('settings').doc('global').set({ featuredGames: games, featuredGamesArchive: archive }, { merge: true })
+    .then(() => {
+      globalSettings.featuredGames = games;
+      globalSettings.featuredGamesArchive = archive;
+      renderFeaturedGamesAdmin();
+    });
+};
+
+window.readdFeaturedGame = function(idx) {
+  const ym = currentYearMonth();
+  const archive = [...(globalSettings.featuredGamesArchive || [])];
+  const { month: _m, ...gameData } = archive[idx];
+  const games = [...(globalSettings.featuredGames || []), gameData];
+  db.collection('settings').doc('global').set({ featuredGames: games, featuredGamesMonth: ym }, { merge: true })
+    .then(() => {
+      globalSettings.featuredGames = games;
+      globalSettings.featuredGamesMonth = ym;
+      renderFeaturedGamesAdmin();
+    });
+};
+
+window.removeFromArchive = function(idx) {
+  const archive = [...(globalSettings.featuredGamesArchive || [])];
+  archive.splice(idx, 1);
+  db.collection('settings').doc('global').set({ featuredGamesArchive: archive }, { merge: true })
+    .then(() => { globalSettings.featuredGamesArchive = archive; renderFeaturedGamesAdmin(); });
+};
+
+document.getElementById('fg-add-btn').addEventListener('click', () => {
+  const name = document.getElementById('fg-name').value.trim();
+  if (!name) return alert("게임 이름을 입력해주세요.");
+  const reason = document.getElementById('fg-reason').value.trim();
+  const introUrl = document.getElementById('fg-intro-url').value.trim();
+  const youtubeUrl = document.getElementById('fg-youtube-url').value.trim();
+  const ym = currentYearMonth();
+  const games = [...(globalSettings.featuredGames || []), { name, reason, introUrl, youtubeUrl }];
+  db.collection('settings').doc('global').set({ featuredGames: games, featuredGamesMonth: ym }, { merge: true }).then(() => {
+    globalSettings.featuredGames = games;
+    globalSettings.featuredGamesMonth = ym;
+    document.getElementById('fg-name').value = '';
+    document.getElementById('fg-reason').value = '';
+    document.getElementById('fg-intro-url').value = '';
+    document.getElementById('fg-youtube-url').value = '';
+    renderFeaturedGamesAdmin();
+  });
+});
+
+function renderFeaturedGamesResult() {
+  const container = document.getElementById('featured-games-result');
+  if (!container) return;
+  const games = globalSettings.featuredGames || [];
+  if (games.length === 0) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  container.innerHTML = buildFeaturedGamesHTML(games);
 }
 
 // ==========================================
