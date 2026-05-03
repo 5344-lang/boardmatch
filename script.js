@@ -472,11 +472,17 @@ function listenToGlobalSettings() {
     const tickerContainer = document.getElementById('ticker-container');
     const tickerText = document.getElementById('ticker-text');
     const title = data.matchTitle || '이번 매칭';
+    const stats = data.participantStats;
+    const statsStr = stats
+      ? (data.isMatchingActive
+          ? ` · 참여 ${stats.participating}명 / 제출 완료 ${stats.submitted}명`
+          : ` · 참여 예정 ${stats.participating}명`)
+      : '';
     let autoMsg = null;
     if (data.resultsPublished) autoMsg = `🎲 ${title} 팀 구성 결과가 발표되었습니다! 결과 확인 버튼을 눌러보세요 🎉`;
-    else if (data.isMatchingActive) autoMsg = `🎮 ${title} 진행 중입니다! 카드를 살펴보고 같이 하고 싶은 분을 선택해주세요 ✨`;
-    else if (data.isProfileCheckActive) autoMsg = `🔍 ${title} 준비 중 · 내 프로필과 게임 성향을 점검하고 참여 여부를 확정해주세요 · 곧 팀 매칭이 시작됩니다!`;
-    const fallbackMsg = data.matchTitle ? `🎲 ${data.matchTitle} · 곧 시작됩니다. 잠시 기다려주세요!` : null;
+    else if (data.isMatchingActive) autoMsg = `🎮 ${title} 진행 중입니다! 카드를 살펴보고 같이 하고 싶은 분을 선택해주세요 ✨${statsStr}`;
+    else if (data.isProfileCheckActive) autoMsg = `🔍 ${title} 준비 중 · 내 프로필과 게임 성향을 점검하고 참여 여부를 확정해주세요 · 곧 팀 매칭이 시작됩니다!${statsStr}`;
+    const fallbackMsg = data.matchTitle ? `🎲 ${data.matchTitle} · 곧 시작됩니다. 잠시 기다려주세요!${statsStr}` : null;
     const msg = data.tickerMessage || autoMsg || fallbackMsg;
     if (msg) {
       tickerText.innerText = msg;
@@ -528,7 +534,6 @@ function listenToGlobalSettings() {
     if (myUserData) updateUserProgressBar();
     if (myUserData.isAdmin) { startAdminRealtimeListeners(); loadAdminData(); }
     if (sections.result?.style.display === 'block') renderFeaturedGamesResult();
-    updateParticipantStatsBar(data);
   });
 }
 
