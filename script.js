@@ -528,7 +528,22 @@ function listenToGlobalSettings() {
     if (myUserData) updateUserProgressBar();
     if (myUserData.isAdmin) { startAdminRealtimeListeners(); loadAdminData(); }
     if (sections.result?.style.display === 'block') renderFeaturedGamesResult();
+    updateParticipantStatsBar(data);
   });
+}
+
+function updateParticipantStatsBar(data) {
+  const bar = document.getElementById('participant-stats-bar');
+  if (!bar) return;
+  const stats = data.participantStats;
+  if (!stats) { bar.style.display = 'none'; return; }
+  const chip = (label, val, color) =>
+    `<span style="background:${color}22; color:${color}; border:1px solid ${color}55; border-radius:20px; padding:3px 11px; font-size:0.78rem; font-weight:700;">${label} <b>${val}</b>명</span>`;
+  let html = chip('참여 예정', stats.participating, '#27ae60');
+  if (data.isMatchingActive) html += chip('선택 제출', stats.submitted, '#3498db');
+  if (data.resultsPublished) html += chip('매칭 완료', stats.matched, '#8e44ad');
+  bar.innerHTML = html;
+  bar.style.display = 'flex';
 }
 
 function updateProfileCheckUI() {
@@ -1114,17 +1129,22 @@ function scheduleAdminRender() {
 }
 
 function updateParticipantCountUI(snap) {
-  let confirmedCount = 0, participatingCount = 0;
+  let confirmedCount = 0, participatingCount = 0, submittedCount = 0, matchedCount = 0;
   snap.forEach(doc => {
     const u = doc.data();
     if (u.isAdmin || !u.nickname) return;
     if (u.isParticipating !== false) {
       participatingCount++;
       if (u.isProfileConfirmed) confirmedCount++;
+      if (u.status === 'submitted') submittedCount++;
+      if (u.status === 'matched') matchedCount++;
     }
   });
   const statusEl = document.getElementById('profile-check-confirm-status');
   if (statusEl) statusEl.innerHTML = `참여 예정자 ${participatingCount}명 중 <b>${confirmedCount}명</b> 점검 완료`;
+  db.collection('settings').doc('global').set({
+    participantStats: { participating: participatingCount, submitted: submittedCount, matched: matchedCount }
+  }, { merge: true });
 }
 
 function startAdminRealtimeListeners() {
@@ -2236,8 +2256,8 @@ window.showPreview = function(mode) {
         <p style="font-size:0.85rem; color:#777; line-height:1.6;">매칭이 마감되었습니다.<br>결과를 기다려주세요.</p>
       </div>`;
   } else if (mode === 'result-leader') {
-    const dummySelfLeader = { ...PREVIEW_DUMMY_SELF, isTeamLeader: true, nickname: '나 (예시)' };
-    const members = PREVIEW_DUMMY_TEAM.slice(1);
+    const dummySelfLeader = { ...PREVIEW_DUMMY_SELF, id: 'dummy-self', isTeamLeader: true, nickname: '나' };
+    const members = PREVIEW_DUMMY_TEAM.slice(1); // 팀원 2명 (3인팀 기준)
     resultAllTeamData = [dummySelfLeader, ...members];
     area.innerHTML = `
       <div style="width:100%;">
@@ -2251,8 +2271,8 @@ window.showPreview = function(mode) {
       </div>`;
   } else if (mode === 'result-member') {
     const leader = PREVIEW_DUMMY_TEAM[0];
-    const others = PREVIEW_DUMMY_TEAM.slice(1);
-    resultAllTeamData = [leader, ...others, PREVIEW_DUMMY_SELF];
+    const dummySelfMember = { ...PREVIEW_DUMMY_SELF, id: 'dummy-self', nickname: '나' };
+    resultAllTeamData = [leader, PREVIEW_DUMMY_TEAM[1], dummySelfMember]; // 팀장+팀원1+나 = 3인
     area.innerHTML = `
       <div style="width:100%;">
         <div style="background:linear-gradient(135deg,#e8f4fd,#d6eaf8); border:2px solid #3498db; border-radius:18px; padding:16px 18px; text-align:center; margin-bottom:18px;">
