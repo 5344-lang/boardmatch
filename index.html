@@ -128,7 +128,8 @@
         <p id="profile-confirm-lock-msg" style="display:none; font-size:0.82rem; color:#27ae60; margin-top:-15px; margin-bottom:20px; text-align:center;">🔒 프로필 점검 완료 후엔 참여 여부를 변경할 수 없습니다.</p>
         
         <button type="submit" id="save-profile-btn">프로필 저장</button>
-        <button type="button" id="withdraw-btn" style="background:none; color:#bbb; font-size:0.8rem; margin-top:8px; padding:8px; text-decoration:underline; box-shadow:none;">계정 탈퇴</button>
+        <button type="button" id="change-pw-btn" style="background:none; color:#3498db; font-size:0.8rem; margin-top:8px; padding:8px; text-decoration:underline; box-shadow:none;">비밀번호 변경</button>
+        <button type="button" id="withdraw-btn" style="background:none; color:#bbb; font-size:0.8rem; margin-top:4px; padding:8px; text-decoration:underline; box-shadow:none;">계정 탈퇴</button>
       </form>
     </section>
 
@@ -202,9 +203,7 @@
         </div>
         <div class="card-actions" id="card-action-btns">
           <div class="action-grid top-actions">
-            <button class="act-btn pref1" onclick="pickCard('pref1')">선택①</button>
-            <button class="act-btn pref2" id="btn-pref2" onclick="pickCard('pref2')">선택②</button>
-            <button class="act-btn pref3" id="btn-pref3" onclick="pickCard('pref3')">선택③</button>
+            <button class="act-btn pref-main" id="btn-select-main" onclick="pickCard('select')">선택 <span id="select-count-badge">(0/3)</span></button>
           </div>
           <div class="action-grid bottom-actions">
             <button class="act-btn dispref" id="btn-dispref" onclick="pickCard('dispref1')">비선호</button>
@@ -212,12 +211,11 @@
         </div>
         <div class="my-picks-box">
           <h4>📌 나의 선택 현황</h4>
-          <ul id="my-picks-list">
-            <li>선택①: <div class="pick-right-side"><span id="pick-1-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref1" onclick="resetPick('pref1')">🔄</button></div></li>
-            <li id="li-pref2">선택②: <div class="pick-right-side"><span id="pick-2-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref2" onclick="resetPick('pref2')">🔄</button></div></li>
-            <li id="li-pref3">선택③: <div class="pick-right-side"><span id="pick-3-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-pref3" onclick="resetPick('pref3')">🔄</button></div></li>
-            <li id="li-dispref">비선호: <div class="pick-right-side"><span id="pick-dis-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-dispref1" onclick="resetPick('dispref1')">🔄</button></div></li>
-          </ul>
+          <p class="selection-hint">3명까지 선택 가능 · 선택하지 않아도 다음 단계로 넘어갈 수 있습니다</p>
+          <div id="my-picks-chips" class="picks-chips-container"></div>
+          <div id="li-dispref" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; font-size: 0.95rem;">
+            비선호: <div class="pick-right-side"><span id="pick-dis-name" class="empty-pick">미선택</span><button class="reset-pick-btn" id="reset-dispref1" onclick="resetPick('dispref1')">🔄</button></div>
+          </div>
           <button id="submit-selection-btn" style="margin-top: 15px;">이대로 최종 제출하기</button>
         </div>
       </div>
@@ -440,7 +438,12 @@
             <div id="sim-team-members" style="display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
             <div id="sim-match-info" style="padding:12px; background:white; border-radius:10px; font-size:0.88rem; line-height:1.7; text-align:left;"></div>
             <div id="sim-warning-msg" style="font-weight:bold; margin-top:10px;"></div>
-            <div style="display:flex; gap:10px; margin-top:15px;">
+            <div style="display:flex; gap:8px; align-items:center; margin-top:12px;">
+              <select id="sim-add-member-select" style="flex:1; padding:6px 8px; border-radius:8px; border:1.5px solid #ddd; font-size:0.82rem;"></select>
+              <button id="sim-add-member-btn" style="background:#3498db; color:white; padding:6px 10px; border-radius:8px; font-size:0.82rem; width:auto; flex-shrink:0;">+ 멤버 추가</button>
+            </div>
+            <p style="font-size:0.72rem; color:#aaa; margin-top:5px; margin-bottom:0;">👑 팀원 카드를 클릭하면 팀장으로 지정됩니다</p>
+            <div style="display:flex; gap:10px; margin-top:12px;">
               <button id="confirm-match-btn" style="background:#27ae60; flex:1; padding:12px;">팀 확정</button>
               <button id="hold-match-btn" style="background:#f39c12; flex:1; padding:12px;">일단 보류</button>
             </div>
@@ -461,6 +464,10 @@
           <h3>🤝 수동 팀 구성</h3>
           <p style="font-size:0.85rem; color:#777; margin-bottom:10px;">자동 제안으로 매칭되지 않은 경우 직접 팀을 구성합니다. (Ctrl/Cmd 클릭으로 다중 선택)</p>
           <select id="manual-team-users" multiple style="width:100%; margin-bottom:10px; padding:8px; font-size:0.85rem; border-radius:10px; border:1.5px solid #eaeaea; min-height:100px;"></select>
+          <div id="manual-leader-area" style="display:none; margin-bottom:10px;">
+            <label style="font-size:0.82rem; color:#555; font-weight:700; display:block; margin-bottom:4px;">👑 팀장 지정</label>
+            <select id="manual-leader-select" style="width:100%; padding:7px; border-radius:8px; border:1.5px solid #eaeaea; font-size:0.82rem;"><option value="">랜덤 배정</option></select>
+          </div>
           <div id="manual-analysis-panel" style="display:none; margin-bottom:12px; padding:15px; background:#f4f7f6; border-radius:14px;">
             <h4 style="color:var(--deep-navy); margin-bottom:12px; text-align:center; font-size:0.95rem;">🤖 AI 관계 분석 (2인 선택 시)</h4>
             <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:14px;">

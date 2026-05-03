@@ -70,16 +70,19 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 0; 
 
 .action-grid { display: flex; gap: 10px; margin-bottom: 10px; }
 .act-btn { padding: 14px 10px; border-radius: 14px; font-size: 0.9rem; }
-.act-btn.pref1 { background: var(--soft-rose); }
-.act-btn.pref2 { background: #f39c12; }
-.act-btn.pref3 { background: #f1c40f; color: #333; }
+.act-btn.pref-main { background: var(--soft-rose); flex: 1; }
+.act-btn.pref-main.selected-state { background: #95a5a6; }
 .act-btn.dispref { background: #34495e; }
 
 .my-picks-box { background: #FAFBFC; padding: 20px; border-radius: 16px; margin-top: 20px; border: 1px dashed #ccc; }
-#my-picks-list { list-style: none; margin-top: 15px; }
-#my-picks-list li { margin-bottom: 10px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+.selection-hint { font-size: 0.8rem; color: #aaa; margin-top: 5px; text-align: center; }
+.picks-chips-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; min-height: 36px; align-items: center; }
+.pick-chip { display: flex; align-items: center; gap: 6px; background: var(--soft-rose); color: white; border-radius: 20px; padding: 6px 12px; font-size: 0.85rem; font-weight: 700; }
+.chip-remove-btn { background: none; border: none; color: white; font-size: 1.1rem; cursor: pointer; padding: 0; line-height: 1; opacity: 0.75; width: auto; }
+.chip-remove-btn:hover { opacity: 1; }
+.empty-picks-hint { color: #bbb; font-size: 0.85rem; }
 .pick-right-side { display: flex; align-items: center; gap: 8px; }
-.empty-pick { color: #777; font-weight: normal; } 
+.empty-pick { color: #777; font-weight: normal; }
 .reset-pick-btn { background: none; border: none; font-size: 1.1rem; color: #999; padding: 0 4px; cursor: pointer; display: none; width: auto; transition: 0.2s; }
 .reset-pick-btn:hover { color: #e74c3c; transform: rotate(-45deg); }
 

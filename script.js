@@ -159,6 +159,26 @@ document.getElementById('login-btn').addEventListener('click', () => {
 });
 document.getElementById('logout-btn').addEventListener('click', () => { auth.signOut(); location.reload(); });
 
+document.getElementById('change-pw-btn').addEventListener('click', async () => {
+  const currentPw = prompt("현재 비밀번호를 입력하세요:");
+  if (currentPw === null) return;
+  const newPw = prompt("새 비밀번호를 입력하세요 (4자리 이상):");
+  if (!newPw || newPw.length < 4) return alert("새 비밀번호는 4자리 이상이어야 합니다.");
+  const confirmPw = prompt("새 비밀번호를 다시 입력하세요:");
+  if (newPw !== confirmPw) return alert("비밀번호가 일치하지 않습니다.");
+
+  const user = auth.currentUser;
+  const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPw + "round");
+  try {
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPw + "round");
+    alert("비밀번호가 변경되었습니다.");
+  } catch (err) {
+    if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') alert("현재 비밀번호가 올바르지 않습니다.");
+    else alert("변경 실패: " + err.message);
+  }
+});
+
 document.getElementById('withdraw-btn').addEventListener('click', async () => {
   if (!confirm("정말 탈퇴하시겠습니까?\n\n모든 프로필과 데이터가 영구 삭제되며 복구할 수 없습니다.")) return;
 
@@ -516,11 +536,7 @@ function listenToGlobalSettings() {
         }
       } else if (data.isMatchingActive && myUserData.isParticipating !== false) {
         showWaitroomArea('selection-area');
-        document.getElementById('btn-pref2').style.display = data.showPref2 !== false ? 'inline-block' : 'none';
-        document.getElementById('btn-pref3').style.display = data.showPref3 !== false ? 'inline-block' : 'none';
         document.getElementById('btn-dispref').style.display = data.showDispref !== false ? 'inline-block' : 'none';
-        document.getElementById('li-pref2').style.display = data.showPref2 !== false ? 'flex' : 'none';
-        document.getElementById('li-pref3').style.display = data.showPref3 !== false ? 'flex' : 'none';
         document.getElementById('li-dispref').style.display = data.showDispref !== false ? 'flex' : 'none';
         loadCards();
       } else if (data.isProfileCheckActive && !data.isMatchingActive && myUserData.isParticipating !== false) {
@@ -571,8 +587,36 @@ document.getElementById('confirm-profile-btn').addEventListener('click', () => {
 });
 
 let allUsers = []; let currentIndex = 0; let mySelections = { pref1: null, pref2: null, pref3: null, dispref1: null };
-const mapIds = { 'pref1': 'pick-1-name', 'pref2': 'pick-2-name', 'pref3': 'pick-3-name', 'dispref1': 'pick-dis-name' };
-const resetBtnIds = { 'pref1': 'reset-pref1', 'pref2': 'reset-pref2', 'pref3': 'reset-pref3', 'dispref1': 'reset-dispref1' };
+
+function renderPickChips() {
+  const chips = document.getElementById('my-picks-chips');
+  if (!chips) return;
+  const count = ['pref1','pref2','pref3'].filter(k => mySelections[k]).length;
+  const badge = document.getElementById('select-count-badge');
+  if (badge) badge.innerText = `(${count}/3)`;
+  const selectedKeys = ['pref1','pref2','pref3'].filter(k => mySelections[k]);
+  if (selectedKeys.length === 0) {
+    chips.innerHTML = '<span class="empty-picks-hint">아직 선택된 분이 없습니다</span>';
+    return;
+  }
+  chips.innerHTML = selectedKeys.map(key => {
+    const user = allUsers.find(u => u.id === mySelections[key]);
+    if (!user) return '';
+    return `<div class="pick-chip">${user.emoji || '👤'} ${user.nickname}<button class="chip-remove-btn" onclick="resetPick('${key}')">×</button></div>`;
+  }).join('');
+}
+
+function updateSelectButton() {
+  const btn = document.getElementById('btn-select-main');
+  if (!btn || allUsers.length === 0) return;
+  const u = allUsers[currentIndex];
+  const isSelected = ['pref1','pref2','pref3'].some(k => mySelections[k] === u.id);
+  const count = ['pref1','pref2','pref3'].filter(k => mySelections[k]).length;
+  btn.innerHTML = isSelected
+    ? `✓ 선택됨 <span id="select-count-badge">(${count}/3)</span>`
+    : `선택 <span id="select-count-badge">(${count}/3)</span>`;
+  btn.classList.toggle('selected-state', isSelected);
+}
 
 function loadCards() {
   db.collection('users').where('status', 'in', ['waiting', 'submitted']).get().then(snapshot => {
@@ -585,11 +629,9 @@ function loadCards() {
 
       // 선택 UI 초기화
       mySelections = { pref1: null, pref2: null, pref3: null, dispref1: null };
-      Object.keys(mapIds).forEach(key => {
-        const el = document.getElementById(mapIds[key]);
-        el.innerText = '미선택'; el.style.color = '#777'; el.style.fontWeight = 'normal';
-        document.getElementById(resetBtnIds[key]).style.display = 'none';
-      });
+      const disNameEl = document.getElementById('pick-dis-name');
+      disNameEl.innerText = '미선택'; disNameEl.style.color = '#777'; disNameEl.style.fontWeight = 'normal';
+      document.getElementById('reset-dispref1').style.display = 'none';
       const submitBtn = document.getElementById('submit-selection-btn');
       submitBtn.disabled = false; submitBtn.classList.remove('disabled-submit'); submitBtn.classList.add('active-submit');
 
@@ -597,20 +639,23 @@ function loadCards() {
       db.collection('requests').doc(auth.currentUser.uid).get().then(reqDoc => {
         if (reqDoc.exists) {
           const saved = reqDoc.data();
-          ['pref1', 'pref2', 'pref3', 'dispref1'].forEach(key => {
+          ['pref1', 'pref2', 'pref3'].forEach(key => {
             if (saved[key]) {
               const user = allUsers.find(u => u.id === saved[key]);
-              if (user) {
-                mySelections[key] = saved[key];
-                const el = document.getElementById(mapIds[key]);
-                el.innerText = user.nickname; el.style.color = '#FD79A8'; el.style.fontWeight = 'bold';
-                document.getElementById(resetBtnIds[key]).style.display = 'inline-block';
-              }
+              if (user) mySelections[key] = saved[key];
             }
           });
+          if (saved.dispref1) {
+            const user = allUsers.find(u => u.id === saved.dispref1);
+            if (user) {
+              mySelections.dispref1 = saved.dispref1;
+              disNameEl.innerText = user.nickname; disNameEl.style.color = '#FD79A8'; disNameEl.style.fontWeight = 'bold';
+              document.getElementById('reset-dispref1').style.display = 'inline-block';
+            }
+          }
           submitBtn.disabled = false; submitBtn.classList.remove('disabled-submit'); submitBtn.classList.add('active-submit');
         }
-        currentIndex = 0; renderCard();
+        currentIndex = 0; renderCard(); renderPickChips();
       });
   });
 }
@@ -653,6 +698,7 @@ function renderCard() {
   const cl = u.checklist || {};
   document.getElementById('c-checklist').innerText =
     `룰마: ${cl.canRuleMaster ? 'O' : 'X'} · 숙련도: ${cl.skillLevel||'보통'} · 선호인원: ${cl.preferredSize||4}인`;
+  updateSelectButton();
 }
 
 window.nextCard = function() {
@@ -665,7 +711,32 @@ window.prevCard = function() { if (currentIndex > 0) { currentIndex--; renderCar
 // 🌟 실시간 프리뷰를 위한 데이터베이스 저장 (isDraft: true)
 window.pickCard = function(prefType) {
   const u = allUsers[currentIndex];
-  for (let key in mySelections) { if (key !== prefType && mySelections[key] === u.id) return alert("⚠️ 이미 선택한 분입니다."); }
+
+  if (prefType === 'select') {
+    // 이미 선택된 경우 → 토글 해제
+    const alreadyKey = ['pref1','pref2','pref3'].find(k => mySelections[k] === u.id);
+    if (alreadyKey) {
+      mySelections[alreadyKey] = null;
+      renderPickChips(); updateSelectButton();
+      db.collection('requests').doc(auth.currentUser.uid).set({ ...mySelections, isDraft: true }, { merge: true });
+      return;
+    }
+    // 빈 슬롯 찾기
+    const emptyKey = ['pref1','pref2','pref3'].find(k => !mySelections[k]);
+    if (!emptyKey) { alert("⚠️ 최대 3명까지 선택할 수 있습니다."); return; }
+    prefType = emptyKey;
+  }
+
+  if (prefType !== 'dispref1' && mySelections.dispref1 === u.id) return alert("⚠️ 비선호로 선택한 분입니다.");
+  if (prefType === 'dispref1' && ['pref1','pref2','pref3'].some(k => mySelections[k] === u.id)) return alert("⚠️ 이미 선택한 분입니다.");
+
+  if (prefType === 'dispref1' && mySelections.dispref1 && mySelections.dispref1 !== u.id) {
+    const existing = allUsers.find(u2 => u2.id === mySelections.dispref1);
+    if (!confirm(`'${existing?.nickname || '선택된 분'}'님 대신 '${u.nickname}'님으로 바꾸시겠어요?`)) return;
+    const disEl = document.getElementById('pick-dis-name');
+    disEl.innerText = '미선택'; disEl.style.color = '#777'; disEl.style.fontWeight = 'normal';
+    document.getElementById('reset-dispref1').style.display = 'none';
+  }
 
   if (prefType !== 'dispref1') {
     const myGs = myUserData.gameSpectrums || {};
@@ -685,35 +756,30 @@ window.pickCard = function(prefType) {
     }
   }
 
-  if (mySelections[prefType] && mySelections[prefType] !== u.id) {
-    const existing = allUsers.find(u2 => u2.id === mySelections[prefType]);
-    const existingName = existing?.nickname || '선택된 분';
-    if (!confirm(`'${existingName}'님 대신 '${u.nickname}'님으로 바꾸시겠어요?`)) return;
-    const oldNameEl = document.getElementById(mapIds[prefType]);
-    oldNameEl.innerText = '미선택'; oldNameEl.style.color = '#777'; oldNameEl.style.fontWeight = 'normal';
-    document.getElementById(resetBtnIds[prefType]).style.display = 'none';
+  mySelections[prefType] = u.id;
+
+  if (prefType === 'dispref1') {
+    const nameEl = document.getElementById('pick-dis-name');
+    nameEl.innerText = u.nickname; nameEl.style.color = "#FD79A8"; nameEl.style.fontWeight = "bold";
+    document.getElementById('reset-dispref1').style.display = "inline-block";
+  } else {
+    renderPickChips(); updateSelectButton();
   }
 
-  mySelections[prefType] = u.id;
-  
-  const nameEl = document.getElementById(mapIds[prefType]);
-  nameEl.innerText = u.nickname; nameEl.style.color = "#FD79A8"; nameEl.style.fontWeight = "bold";
-  document.getElementById(resetBtnIds[prefType]).style.display = "inline-block";
-  
-  
-  // 실시간으로 임시 저장!
   db.collection('requests').doc(auth.currentUser.uid).set({ ...mySelections, isDraft: true }, { merge: true });
-  nextCard(); 
+  nextCard();
 };
 
 window.resetPick = function(prefType) {
-  if(confirm("다시 선택하시겠습니까?")) {
+  if(confirm("선택을 취소하시겠습니까?")) {
     mySelections[prefType] = null;
-    const nameEl = document.getElementById(mapIds[prefType]);
-    nameEl.innerText = "미선택"; nameEl.style.color = "#777"; nameEl.style.fontWeight = "normal";
-    document.getElementById(resetBtnIds[prefType]).style.display = "none";
-    
-    // 실시간 임시 저장 업데이트
+    if (prefType === 'dispref1') {
+      const nameEl = document.getElementById('pick-dis-name');
+      nameEl.innerText = "미선택"; nameEl.style.color = "#777"; nameEl.style.fontWeight = "normal";
+      document.getElementById('reset-dispref1').style.display = "none";
+    } else {
+      renderPickChips(); updateSelectButton();
+    }
     db.collection('requests').doc(auth.currentUser.uid).set({ ...mySelections, isDraft: true }, { merge: true });
   }
 };
@@ -1493,6 +1559,23 @@ function runMatchAlgorithm(unassigned, usersData, reqData, targetSize) {
   return bestTeams;
 }
 
+function getDisconflicts(memberIds) {
+  const conflicts = [];
+  memberIds.forEach((aId, ai) => {
+    memberIds.forEach((bId, bi) => {
+      if (ai >= bi) return;
+      const aDisB = requestsData[aId]?.dispref1 === bId;
+      const bDisA = requestsData[bId]?.dispref1 === aId;
+      if (!aDisB && !bDisA) return;
+      const aN = adminUsersData[aId]?.nickname || aId;
+      const bN = adminUsersData[bId]?.nickname || bId;
+      const type = (aDisB && bDisA) ? '상호 비선호' : aDisB ? `${aN}→${bN} 비선호` : `${bN}→${aN} 비선호`;
+      conflicts.push(`• ${aN} ↔ ${bN} (${type})`);
+    });
+  });
+  return conflicts;
+}
+
 document.getElementById('start-auto-match-btn').addEventListener('click', () => {
   const targetSize = globalSettings.targetTeamSize || 4;
   const unassigned = Object.values(adminUsersData).filter(
@@ -1503,31 +1586,43 @@ document.getElementById('start-auto-match-btn').addEventListener('click', () => 
   if (!bestTeams) return alert("매칭 가능한 인원이 부족합니다.");
   proposedQueue = bestTeams;
   if (proposedQueue.length === 0) return alert("구성 가능한 팀이 없습니다.");
+
+  const allConflicts = bestTeams.flatMap(team => getDisconflicts(team.map(u => u.id)));
+  if (allConflicts.length > 0)
+    alert(`⚠️ [관리자 전용] 불가피한 비선호 매칭이 포함되어 있습니다.\n\n${allConflicts.join('\n')}\n\n해당 팀은 비선호를 피할 수 없는 상황입니다. 수동 조정을 검토하세요.`);
+
   showNextProposal();
 });
 
 let currentProposal = null;
-function showNextProposal() {
-  if (proposedQueue.length === 0) {
-    document.getElementById('sim-result-box').style.display = 'none';
-    return alert("제안된 모든 팀 검토가 끝났습니다.");
-  }
-  currentProposal = proposedQueue.shift();
-  const team = currentProposal;
+let selectedLeaderId = null;
 
+function renderCurrentProposal() {
+  const team = currentProposal;
   document.getElementById('sim-result-box').style.display = 'block';
-  document.getElementById('sim-team-members').innerHTML = team.map(u =>
-    `<div style="background:white; padding:8px 12px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.06); text-align:center; min-width:60px;">
+
+  document.getElementById('sim-team-members').innerHTML = team.map(u => {
+    const isLeader = u.id === selectedLeaderId;
+    return `<div onclick="setProposalLeader('${u.id}')" style="cursor:pointer; background:${isLeader ? '#fffbea' : 'white'}; border:2px solid ${isLeader ? '#f1c40f' : 'transparent'}; padding:8px 12px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.06); text-align:center; min-width:60px;">
       <div style="font-size:1.8rem;">${u.emoji||'👤'}</div>
+      ${isLeader ? '<div style="font-size:0.8rem; margin:-2px 0 2px;">👑</div>' : ''}
       <div style="font-weight:800; font-size:0.82rem;">${u.nickname}</div>
       <div style="font-size:0.7rem; color:#888;">${u.checklist?.skillLevel||'보통'}</div>
       ${u.checklist?.canRuleMaster ? '<div style="font-size:0.65rem; color:#8e44ad; font-weight:700;">룰마✅</div>' : ''}
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
+
+  const teamIds = new Set(team.map(u => u.id));
+  const addSel = document.getElementById('sim-add-member-select');
+  if (addSel) {
+    addSel.innerHTML = '<option value="">추가할 멤버 선택</option>' +
+      Object.values(adminUsersData)
+        .filter(u => u.status === 'submitted' && !u.isAdmin && !teamIds.has(u.id) && u.isParticipating !== false)
+        .map(u => `<option value="${u.id}">${u.emoji||'👤'} ${u.nickname}</option>`)
+        .join('');
+  }
 
   const infoLines = [`<b>팀원 ${team.length}명</b>`];
-
-  // 📤 팀 내 보낸 선택
   infoLines.push('<br><span style="font-size:0.82rem; color:#888; font-weight:700;">📤 팀 내 지망 현황</span>');
   let hasAnyPick = false;
   team.forEach(A => {
@@ -1539,7 +1634,6 @@ function showNextProposal() {
   });
   if (!hasAnyPick) infoLines.push('<span style="color:#bbb; font-size:0.82rem;">팀 내 지망 없음</span>');
 
-  // 📥 팀원별 받은 선택 (관리자 전용)
   infoLines.push('<br><span style="font-size:0.82rem; color:#888; font-weight:700;">📥 팀원별 받은 선택</span>');
   team.forEach(A => {
     const inTeam = [];
@@ -1564,7 +1658,6 @@ function showNextProposal() {
     warnings.push('⚡ 경쟁 성향 차이 큰 팀 (즐겜러 ↔ 빡겜러 혼재)');
   if (interactions.filter(v => v > 65).length >= 2)
     warnings.push('⚠️ 인터랙션 성향 강한 팀원 다수 — 치열한 신경전 예상');
-
   team.forEach(A => {
     team.forEach(B => {
       if (A.id >= B.id) return;
@@ -1581,10 +1674,41 @@ function showNextProposal() {
     : '<span style="color:#27ae60;">✅ 이슈 없음</span>';
 }
 
+window.setProposalLeader = function(uid) {
+  selectedLeaderId = (selectedLeaderId === uid) ? null : uid;
+  renderCurrentProposal();
+};
+
+document.getElementById('sim-add-member-btn').addEventListener('click', () => {
+  const sel = document.getElementById('sim-add-member-select');
+  const uid = sel.value;
+  if (!uid) return;
+  const user = adminUsersData[uid];
+  if (!user) return;
+  currentProposal.push(user);
+  renderCurrentProposal();
+});
+
+function showNextProposal() {
+  let team = null;
+  while (proposedQueue.length > 0) {
+    const candidate = proposedQueue.shift();
+    const validMembers = candidate.filter(u => adminUsersData[u.id]?.status === 'submitted');
+    if (validMembers.length >= 2) { team = validMembers; break; }
+  }
+  if (!team) {
+    document.getElementById('sim-result-box').style.display = 'none';
+    return alert("제안된 모든 팀 검토가 끝났습니다.");
+  }
+  currentProposal = team;
+  selectedLeaderId = null;
+  renderCurrentProposal();
+}
+
 document.getElementById('confirm-match-btn').addEventListener('click', () => {
   const team = currentProposal;
   const teamId = `team-${Date.now()}`;
-  const leaderId = team[Math.floor(Math.random() * team.length)].id;
+  const leaderId = selectedLeaderId || team[Math.floor(Math.random() * team.length)].id;
   const batch = db.batch();
   team.forEach(u => {
     batch.update(db.collection('users').doc(u.id), { status: 'matched', teamId, isTeamLeader: u.id === leaderId });
@@ -1914,14 +2038,34 @@ window.adminResetUser = function(uid) {
   });
 };
 
+document.getElementById('manual-team-users').addEventListener('change', () => {
+  const selectedIds = [...document.getElementById('manual-team-users').selectedOptions].map(o => o.value);
+  const leaderArea = document.getElementById('manual-leader-area');
+  const leaderSel = document.getElementById('manual-leader-select');
+  if (selectedIds.length >= 2) {
+    leaderSel.innerHTML = '<option value="">랜덤 배정</option>' +
+      selectedIds.map(id => {
+        const u = adminUsersData[id];
+        return `<option value="${id}">${u?.emoji||'👤'} ${u?.nickname||id}</option>`;
+      }).join('');
+    leaderArea.style.display = 'block';
+  } else {
+    leaderArea.style.display = 'none';
+  }
+});
+
 document.getElementById('manual-match-btn').addEventListener('click', () => {
   const select = document.getElementById('manual-team-users');
   const selectedIds = [...select.selectedOptions].map(o => o.value);
   if (selectedIds.length < 2) return alert("2명 이상 선택하세요. (Ctrl/Cmd 클릭으로 다중 선택)");
   const names = selectedIds.map(id => adminUsersData[id]?.nickname).join(', ');
+  const manualConflicts = getDisconflicts(selectedIds);
+  if (manualConflicts.length > 0)
+    if (!confirm(`⚠️ [관리자 전용] 비선호 충돌 경고\n\n${manualConflicts.join('\n')}\n\n그래도 이 팀으로 확정하시겠습니까?`)) return;
   if (!confirm(`${names}\n위 ${selectedIds.length}명을 수동 팀으로 확정하시겠습니까?`)) return;
   const teamId = `team-${Date.now()}`;
-  const leaderId = selectedIds[Math.floor(Math.random() * selectedIds.length)];
+  const manualLeaderVal = document.getElementById('manual-leader-select')?.value;
+  const leaderId = manualLeaderVal || selectedIds[Math.floor(Math.random() * selectedIds.length)];
   const batch = db.batch();
   selectedIds.forEach(id => {
     batch.update(db.collection('users').doc(id), { status: 'matched', teamId, isTeamLeader: id === leaderId });
