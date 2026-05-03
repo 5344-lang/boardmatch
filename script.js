@@ -40,18 +40,6 @@ function showSection(sectionName) {
   sections[sectionName].style.display = 'block';
 }
 
-function showNotParticipatingResult() {
-  showNotParticipatingResult();
-  const btn = document.getElementById('result-nonpart-contact-btn');
-  const link = (globalSettings || {}).adminKakaoLink;
-  if (btn && link) {
-    btn.style.display = 'block';
-    btn.onclick = () => window.open(link, '_blank');
-  } else if (btn) {
-    btn.style.display = 'none';
-  }
-}
-
 function showWaitroomArea(areaName) {
   showSection('waitroom');
   ['waitroom-header', 'selection-area', 'submitted-lock-area', 'result-ready-area', 'profile-check-area', 'result-not-participating-area'].forEach(a => {
@@ -90,7 +78,7 @@ function updateUserProgressBar() {
 window.goHome = function() {
   if (!myUserData) { location.reload(); return; }
   const gs = globalSettings || {};
-  if (gs.resultsPublished && myUserData.isParticipating === false) { showNotParticipatingResult(); return; }
+  if (gs.resultsPublished && myUserData.isParticipating === false) { showWaitroomArea('result-not-participating-area'); return; }
   if (myUserData.status === 'matched' && gs.resultsPublished) { showWaitroomArea('result-ready-area'); return; }
   if (myUserData.status === 'submitted' || myUserData.status === 'matched') { showWaitroomArea('submitted-lock-area'); return; }
   if (gs.isMatchingActive && myUserData.isParticipating) { showWaitroomArea('selection-area'); return; }
@@ -537,7 +525,7 @@ function listenToGlobalSettings() {
 
     if (!isAdminViewing) {
       if (data.resultsPublished && myUserData.isParticipating === false) {
-        showNotParticipatingResult();
+        showWaitroomArea('result-not-participating-area');
       } else if (data.resultsPublished && myUserData.status === 'matched') {
         showWaitroomArea('result-ready-area');
       } else if (myUserData.status === 'submitted' || myUserData.status === 'matched') {
